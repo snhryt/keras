@@ -13,6 +13,7 @@ tags
 Keras.egg-info
 examples/img/*
 .keras/*
+MyWork/*
 
 # test-related
 .coverage
