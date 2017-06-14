@@ -122,7 +122,7 @@ def buildCaffenet(class_num, channel_num=3, img_width=224, img_height=224):
 
 def main():
   class_num = 2
-  parent_dirpath = '/media/snhryt/Data/Research_Master/keras/MyWork/2fonts_2class_exceptCOQaceot/'
+  parent_dirpath = '/media/snhryt/Data/Research_Master/keras/MyWork/2fonts_2class_exceptCOQacegot/'
   model_filepath = parent_dirpath + 'model.hdf5'
 
   if (os.path.exists(model_filepath)):
@@ -229,49 +229,53 @@ def main():
   plt.show()
   '''
 
+  def outputImages(font):
+    test_img_dirpath = '/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + font
+    output_dirpath = parent_dirpath + font
+    test_img_arrays, filenames = storeImages(test_img_dirpath)
+
+    if not os.path.isdir(output_dirpath):
+      os.mkdir(output_dirpath)
+    classes = model.predict(test_img_arrays, batch_size=64, verbose=1)
+    
+    # テスト画像およびその識別結果のグラフを表示&保存
+    x = np.array([])
+    for j in range(class_num):
+      x = np.append(x, j) 
+    labels = ['sans-serif', 'serif']
+
+    for i in range(0, len(classes)): 
+      fig = plt.figure(figsize=(4,3))
+      
+      ax1 = fig.add_subplot(1, 2, 1)
+      img = array_to_img(test_img_arrays[i], scale=True)
+      ax1.imshow(img, cmap='Greys_r')
+
+      ax2 = fig.add_subplot(1, 2, 2)
+      y = classes[i]
+      if class_num == 2:
+        ax2.bar(left=x, height=y, tick_label=labels, align='center', width=0.5)
+      else:
+        ax2.bar(left=x, height=y, align='center', width=0.8)
+        ax2.set_xlim(0, class_num - 1)
+      ax2.set_ylim(0.0, 1.0)
+      ax2.set_ylabel('probability')
+      ax2.grid(True)
+
+      fig.tight_layout() # タイトルとラベルが被らないようにする
+      #plt.pause(0.7)
+      plt.close()
+      
+      output_img_filepath = output_dirpath + '/' + filenames[i]
+      fig.savefig(output_img_filepath)
+      if i % 10 == 0 and i != 0:
+        print('.. Output %d/%d images' % (i, len(classes)))
+
   # 学習済のモデルを使って、trainとvalidationとは別の画像でテスト
-  #font = 'Aerolinea'
-  #font = 'AccoladeSerial-Regular'
-  #font = 'A750-Sans-Medium-Regular'
-  font = 'A850-Roman-Regular'
-  test_img_dirpath = '/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + font
-  output_dirpath = parent_dirpath + font
-  test_img_arrays, filenames = storeImages(test_img_dirpath)
-
-  if not os.path.isdir(output_dirpath):
-    os.mkdir(output_dirpath)
-  classes = model.predict(test_img_arrays, batch_size=64, verbose=1)
-  
-  # テスト画像およびその識別結果のグラフを表示&保存
-  x = np.array([])
-  for j in range(class_num):
-    x = np.append(x, j) 
-  labels = ['sans-serif', 'serif']
-
-  for i in range(0, len(classes)): 
-    fig = plt.figure(figsize=(4,3))
-    
-    ax1 = fig.add_subplot(1, 2, 1)
-    img = array_to_img(test_img_arrays[i], scale=True)
-    ax1.imshow(img, cmap='Greys_r')
-
-    ax2 = fig.add_subplot(1, 2, 2)
-    y = classes[i]
-    ax2.bar(left=x, height=y, tick_label=labels, align='center', width=0.5)
-    #ax2.bar(left=x, height=y, align='center', width=0.8)
-    #ax2.set_xlim(0, class_num - 1)
-    ax2.set_ylim(0.0, 1.0)
-    ax2.set_ylabel('probability')
-    ax2.grid(True)
-
-    fig.tight_layout() # タイトルとラベルが被らないようにする
-    #plt.pause(0.7)
-    plt.close()
-    
-    output_img_filepath = output_dirpath + '/' + filenames[i]
-    fig.savefig(output_img_filepath)
-    if i % 10 == 0 and i != 0:
-      print('.. Output %d/%d images' % (i, len(classes)))
+  outputImages(font='Aerolinea')
+  outputImages(font='AccoladeSerial-Regular')
+  outputImages(font='A750-Sans-Medium-Regular')
+  outputImages(font='A850-Roman-Regular')
 
 
 if __name__ == '__main__':
