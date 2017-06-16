@@ -12,8 +12,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 
+
 def storeImagesAndLabels(txt_filepath, class_num):
   print('\n[Loading %s]' % txt_filepath)
+  line_num = 0
+  with open(txt_filepath) as f:
+    line = f.readline()
+    while line:
+      line_num += 1
+      line = f.readline()
+
   img_arrays, labels = [], []
   img_num = 0
   with open(txt_filepath) as f:
@@ -29,7 +37,7 @@ def storeImagesAndLabels(txt_filepath, class_num):
       img_num += 1
       line = f.readline()
       if img_num % 100 == 0:
-        print('.. %d images(indices) are loaded' % img_num)
+        print('.. %d/%d images(indices) are loaded' % (img_num, line_num))
 
   # kerasに渡すためにnumpy配列に変換
   img_arrays = np.array(img_arrays)
@@ -121,24 +129,23 @@ def buildCaffenet(class_num, channel_num=3, img_width=224, img_height=224):
 
 
 def main():
-  class_num = 2
-  parent_dirpath = '/media/snhryt/Data/Research_Master/keras/MyWork/2fonts_2class_exceptCOQacegot/'
+  class_num = 100
+  parent_dirpath = '/media/snhryt/Data/Research_Master/keras/MyWork/100fonts_100class/'
   model_filepath = parent_dirpath + 'model.hdf5'
 
   if (os.path.exists(model_filepath)):
     print('\n[Loading and the model and its weights]')
     model = load_model(model_filepath)
   else:
+    channel_num, img_width, img_height = 1, 100, 100
     # 画像とラベルの読み込み
     train_txt_filepath = parent_dirpath + 'train.txt'
     val_txt_filepath = parent_dirpath + 'validation.txt'
-    train_img_arrays, train_labels = storeImagesAndLabels(train_txt_filepath, class_num) 
-    val_img_arrays, val_labels = storeImagesAndLabels(val_txt_filepath, class_num) 
       
     # モデルのコンパイル
-    model = buildCaffenet(class_num=class_num, channel_num=1, img_width=100, img_height=100)
+    model = buildCaffenet(class_num=class_num, channel_num=channel_num, img_width=img_width, 
+                          img_height=img_height)
     model.summary()
-    #from keras.optimizers import RMSprop
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # callbacksの設定
@@ -151,9 +158,45 @@ def main():
     # モデルの学習
     batch_size = 256
     epoch_num = 50
+    def generator(txt_filepath, batch_size):
+      print('\n[Loading %s]\n' % txt_filepath)
+      line_num = 0
+      with open(txt_filepath) as f:
+        line = f.readline()
+        while line:
+          line_num += 1
+          line = f.readline()
+      print('.. #Data = %d' % line_num)
+      
+      img_num = 0
+      #with open(txt_filepath) as f:
+      f = open(txt_filepath)
+      line = f.readline()
+      while line:
+        batch_features = np.zeros((batch_size, img_width, img_height, channel_num))
+        batch_labels = np.zeros((batch_size, class_num))
+        for i in range(batch_size):
+          img = load_img(line.split(' ')[0], grayscale=True, target_size=(img_width,img_height))
+          img_array = img_to_array(img)
+          img_array /= 255
+          batch_features[i] = np.array(img_array).reshape(1, img_width, img_height, channel_num)
+          index = line.split(' ')[1]
+          index = index.split('\n')[0]
+          label = int(index)
+          batch_labels[i] = np_utils.to_categorical(label, class_num)
+          assert img_num < line_num, '***ERROR! img_num < line_num'
+          img_num += 1
+          line = f.readline()
+        yield (batch_features, batch_labels)
+      f.close()
+    
+    history = model.fit_generator(generator(train_txt_filepath, batch_size), epochs=epoch_num, 
+                                  steps_per_epoch=1000)
+    '''
     history = model.fit(train_img_arrays, train_labels, batch_size=batch_size, epochs=epoch_num,
                         verbose=1, validation_data=(val_img_arrays, val_labels), 
                         callbacks=[tbcb, checkpointer, early_stopping])
+    '''
     
     # 学習履歴の保存
     history_filepath = parent_dirpath + 'history.pickle'
@@ -209,7 +252,7 @@ def main():
     # 一番よかったvalidation accuracyの書き出し
     val_result_filepath = parent_dirpath + 'ValidationResult.txt'
     score = model.evaluate(val_img_arrays, val_labels, verbose=0)
-    with open(val_result_filepath, 'w') as f:
+    with open(val_result_filepath, 'w') as f:img = load_img(line.split(' ')[0], grayscale=True, target_size=(100,100))
       f.writelines('Best validation loss: ' + str(score[0]) + '\n')
       f.writelines('Best validation accuracy: ' + str(score[1]) + '\n')
   
@@ -229,6 +272,7 @@ def main():
   plt.show()
   '''
 
+  # テスト画像およびその識別結果のグラフを表示&保存
   def outputImages(font):
     test_img_dirpath = '/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + font
     output_dirpath = parent_dirpath + font
@@ -237,39 +281,55 @@ def main():
     if not os.path.isdir(output_dirpath):
       os.mkdir(output_dirpath)
     classes = model.predict(test_img_arrays, batch_size=64, verbose=1)
-    
-    # テスト画像およびその識別結果のグラフを表示&保存
-    x = np.array([])
-    for j in range(class_num):
-      x = np.append(x, j) 
-    labels = ['sans-serif', 'serif']
 
-    for i in range(0, len(classes)): 
-      fig = plt.figure(figsize=(4,3))
-      
-      ax1 = fig.add_subplot(1, 2, 1)
-      img = array_to_img(test_img_arrays[i], scale=True)
-      ax1.imshow(img, cmap='Greys_r')
+    if class_num == 2:
+      x = np.array([])
+      for j in range(class_num):
+        x = np.append(x, j) 
+      labels = ['sans-serif', 'serif']
 
-      ax2 = fig.add_subplot(1, 2, 2)
-      y = classes[i]
-      if class_num == 2:
+      for i in range(0, len(classes)): 
+        fig = plt.figure(figsize=(4,3))
+        
+        ax1 = fig.add_subplot(1, 2, 1)
+        img = array_to_img(test_img_arrays[i], scale=True)
+        ax1.imshow(img, cmap='Greys_r')
+
+        ax2 = fig.add_subplot(1, 2, 2)
+        y = classes[i]
         ax2.bar(left=x, height=y, tick_label=labels, align='center', width=0.5)
-      else:
-        ax2.bar(left=x, height=y, align='center', width=0.8)
-        ax2.set_xlim(0, class_num - 1)
-      ax2.set_ylim(0.0, 1.0)
-      ax2.set_ylabel('probability')
-      ax2.grid(True)
+        ax2.set_ylim(0.0, 1.0)
+        ax2.set_ylabel('probability')
+        ax2.grid(True)
 
-      fig.tight_layout() # タイトルとラベルが被らないようにする
-      #plt.pause(0.7)
-      plt.close()
-      
-      output_img_filepath = output_dirpath + '/' + filenames[i]
-      fig.savefig(output_img_filepath)
-      if i % 10 == 0 and i != 0:
-        print('.. Output %d/%d images' % (i, len(classes)))
+        fig.tight_layout() # タイトルとラベルが被らないようにする
+        #plt.pause(0.7)
+        plt.close()
+        
+        output_img_filepath = output_dirpath + '/' + filenames[i]
+        fig.savefig(output_img_filepath)
+        if i % 10 == 0 and i != 0:
+          print('.. Output %d/%d images' % (i, len(classes)))
+    else:
+      top3_x, top3_y = [0, 0, 0], [0.0, 0.0, 0.0]
+      for i in range(class_num):
+        y = classes[i]
+        if y >= top3_y[0]:
+          tmp_y1, tmp_y2, tmp_x1, tmp_x2 = top3_y[0], top3_y[1], top3_x[0], top3_x[1]
+          top3_y[0], top3_y[1], top3_y[2] = y, tmp_y1, tmp_y2
+          top3_x[0], top3_x[1], top3_x[2] = i, tmp_x1, tmp_x2          
+        elif y >= top3_y[1]:
+          tmp_y, tmp_x = top3_y[1], top3_x[1]
+          top3_y[1], top3_y[2] = y, tmp_y
+          top3_x[1], top3_x[2] = x, tmp_x          
+        elif y >= top3_y[2]:
+          top3_y[2] = y
+          top3_x[2] = x
+
+
+    
+    
+    
 
   # 学習済のモデルを使って、trainとvalidationとは別の画像でテスト
   outputImages(font='Aerolinea')
