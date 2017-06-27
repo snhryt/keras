@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
+import time
 from argparse import ArgumentParser
 from keras.preprocessing.image import load_img, img_to_array
 import numpy as np
@@ -63,6 +64,8 @@ def main():
   )
   args = parser.parse_args()
 
+  start = time.time()
+
   if not os.path.exists(args.output_dirpath):
     os.makedirs(args.output_dirpath)
     print('Make {}'.format(args.output_dirpath))
@@ -105,7 +108,7 @@ def main():
       new_output_dirpath = args.output_dirpath + font
       if not os.path.exists(new_output_dirpath):
         os.mkdir(new_output_dirpath)
-        
+
       if countFiles(new_output_dirpath) == 18200:
         shutil.rmtree(img_dirpath)
         print('.. {0}/{1} font({2})'.format(i+1, len(fonts), font) + 
@@ -122,8 +125,13 @@ def main():
         print('.. {0}/{1} font({2}) images are converted to numpy'.format(i+1, len(fonts), font))
 
 
-  print '[Done!]'
+  print '***DONE!***'
+  end = time.time() - start
+  print('processing time: {}[sec]'.format(end))
 
 
 if __name__ == "__main__":
-  main() 
+  main()
+  
+
+

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import pickle
+import time
 from argparse import ArgumentParser
 from keras.models import Sequential
 from keras.preprocessing import image
@@ -106,17 +107,24 @@ def generateArrays(filepaths, labels, batch_size, class_num):
   batch_labels = np.zeros((batch_size, class_num))
   img_ext = os.path.splitext(filepaths[0])[1]
   counter = 0
-  while counter < len(filepaths):
-    for i in range(batch_size):
-      if img_ext == '.png' or img_ext == '.jpg':
+
+  if img_ext == '.png' or img_ext == '.jpg':
+    while counter < len(filepaths):
+      for i in range(batch_size):
         img = image.load_img(filepaths[counter], grayscale=True, target_size=(WIDTH, HEIGHT))
         array = image.img_to_array(img) / 255.
-      elif img_ext == '.npy':
+        batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
+        batch_labels[i] = labels[counter]
+        counter += 1
+      yield (batch_img_arrays, batch_labels)
+  elif img_ext == '.npy':
+    while counter < len(filepaths):
+      for i in range(batch_size):
         array = np.load(filepaths[counter]) / 255.
-      batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
-      batch_labels[i] = labels[counter]
-      counter += 1
-    yield (batch_img_arrays, batch_labels)
+        batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
+        batch_labels[i] = labels[counter]
+        counter += 1
+      yield (batch_img_arrays, batch_labels)
 
 
 def loadImages(filepaths):
@@ -149,6 +157,8 @@ def main():
   parser.add_argument('-e', '--epochs', type=int, default=50, 
                       help='number of training epoch (default: 50)')  
   args = parser.parse_args()
+
+  start = time.time()
 
   # caffenetの構築およびコンパイル
   model_filepath = makeFullFilepath(args.target_dirpath, 'model.hdf5')
@@ -205,7 +215,8 @@ def main():
   with open(history_filepath, mode='wb') as f:
     pickle.dump(history.history, f)
 
-  
+  end = time.time() - start
+  print('processing time: {}[sec]'.format(end))
 
 if __name__ == "__main__":
   main() 
