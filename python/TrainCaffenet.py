@@ -3,6 +3,7 @@
 import os
 import pickle
 import time
+import random
 from argparse import ArgumentParser
 from keras.models import Sequential
 from keras.preprocessing import image
@@ -106,25 +107,25 @@ def generateArrays(filepaths, labels, batch_size, class_num):
   batch_img_arrays = np.zeros((batch_size, WIDTH, HEIGHT, CHANNEL_NUM))
   batch_labels = np.zeros((batch_size, class_num))
   img_ext = os.path.splitext(filepaths[0])[1]
-  counter = 0
+  file_num = len(filepaths)
 
-  if img_ext == '.png' or img_ext == '.jpg':
-    while counter < len(filepaths):
-      for i in range(batch_size):
-        img = image.load_img(filepaths[counter], grayscale=True, target_size=(WIDTH, HEIGHT))
-        array = image.img_to_array(img) / 255.
-        batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
-        batch_labels[i] = labels[counter]
-        counter += 1
-      yield (batch_img_arrays, batch_labels)
-  elif img_ext == '.npy':
-    while counter < len(filepaths):
-      for i in range(batch_size):
-        array = np.load(filepaths[counter]) / 255.
-        batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
-        batch_labels[i] = labels[counter]
-        counter += 1
-      yield (batch_img_arrays, batch_labels)
+  while True:
+    # if img_ext == '.png' or img_ext == '.jpg':
+    for i in range(batch_size):
+      index = random.choice(range(file_num))
+      img = image.load_img(filepaths[index], grayscale=True, target_size=(WIDTH, HEIGHT))
+      array = image.img_to_array(img) / 255.
+      batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
+      batch_labels[i] = labels[index]
+    yield (batch_img_arrays, batch_labels)
+    # elif img_ext == '.npy': 
+    #   for i in range(batch_size):
+    #     array = np.load(filepaths[counter]) / 255.
+    #     batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
+    #     batch_labels[i] = labels[counter]
+    #     counter += 1
+    #   yield (batch_img_arrays, batch_labels)
+      
 
 
 def loadImages(filepaths):
@@ -184,7 +185,7 @@ def main():
   # patientce： 何回連続で損失の最小値が更新されなかったらループを止めるか
   early_stopping = EarlyStopping(monitor='loss', patience=10, verbose=1)
   tensor_board = TensorBoard(log_dir=args.target_dirpath+'graph', histogram_freq=0, 
-                             write_graph=True)
+                             write_graph=False, write_images=True)
 
   # generator を生成して batch_size 枚の画像(.npy)ごとに学習を行う
   if args.generator_training:
@@ -198,7 +199,7 @@ def main():
       validation_data=generateArrays(filepaths=val_filepaths, labels=val_labels, 
                                      batch_size=args.batch_size, class_num=args.class_num),
       validation_steps=validation_steps,
-      callbacks=[checkpointer, early_stopping]
+      callbacks=[checkpointer, early_stopping, tensor_board]
     )
   else:
     # train, validationの画像をすべて読み込んで学習を行う
