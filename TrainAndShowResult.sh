@@ -2,8 +2,8 @@
 set -e
 
 PARENT_DIRPATH="/media/snhryt/Data/Research_Master/"
-TARGET_DIRPATH="${PARENT_DIRPATH}keras/MyWork/capA_10fonts/"
-CLASS_NUM=10
+TARGET_DIRPATH="${PARENT_DIRPATH}keras/MyWork/capA_6628fonts/"
+CLASS_NUM=100
 BATCH_SIZE=256
 EPOCHS=50
 
@@ -12,7 +12,8 @@ if [ ! -f "${TARGET_DIRPATH}model.hdf5" ]; then
          ${TARGET_DIRPATH} \
          ${CLASS_NUM} \
          --batch_size=${BATCH_SIZE} \
-         --epochs=${EPOCHS}
+         --epochs=${EPOCHS} \
+         -g
 fi
 
 FONT_LIST_FILEPATH="${PARENT_DIRPATH}Syn_AlphabetImages/selected/${CLASS_NUM}fonts/"
@@ -23,5 +24,5 @@ python python/ShowResult.py \
        ${TARGET_DIRPATH} \
        ${FONT_LIST_FILEPATH} \
        ${CLASS_NUM} \
-       ${ALPHABET}
+       --alphabet=${ALPHABET}
 
