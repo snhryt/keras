@@ -1,15 +1,18 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
-import pickle
 import time
 import random
+import pickle
+import cv2
 from argparse import ArgumentParser
 from keras.models import Sequential
 from keras.preprocessing import image
 from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
 from keras.utils import np_utils, plot_model
 import numpy as np
+
+from augmentation import augmentImage
 
 CHANNEL_NUM, WIDTH, HEIGHT = 1, 100, 100
 
@@ -104,28 +107,48 @@ def storeImageFilepathsAndLabels(txt_filepath, class_num):
 
 
 def generateArrays(filepaths, labels, batch_size, class_num):
-  batch_img_arrays = np.zeros((batch_size, WIDTH, HEIGHT, CHANNEL_NUM))
-  batch_labels = np.zeros((batch_size, class_num))
-  img_ext = os.path.splitext(filepaths[0])[1]
-  file_num = len(filepaths)
+  img = cv2.imread(filepaths[0], cv2.IMREAD_GRAYSCALE)
+  bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+  augmented_imgs = augmentImage(bin_img.transpose())
+
+  augmentation_num = augmented_imgs.shape[0]
+  data_num = augmentation_num * batch_size
+  font_indices = [i for i in range(len(filepaths))]
+  data_indices = [i for i in range(data_num)]
+  tmp_batch_imgs = np.empty((data_num, HEIGHT, WIDTH, CHANNEL_NUM))
+  tmp_batch_labels = np.empty((data_num, class_num))
+  batch_imgs = np.empty((data_num, HEIGHT, WIDTH, CHANNEL_NUM))
+  batch_labels = np.empty((data_num, class_num))
 
   while True:
-    # if img_ext == '.png' or img_ext == '.jpg':
-    for i in range(batch_size):
-      index = random.choice(range(file_num))
-      img = image.load_img(filepaths[index], grayscale=True, target_size=(WIDTH, HEIGHT))
-      array = image.img_to_array(img) / 255.
-      batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
-      batch_labels[i] = labels[index]
-    yield (batch_img_arrays, batch_labels)
-    # elif img_ext == '.npy': 
-    #   for i in range(batch_size):
-    #     array = np.load(filepaths[counter]) / 255.
-    #     batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
-    #     batch_labels[i] = labels[counter]
-    #     counter += 1
-    #   yield (batch_img_arrays, batch_labels)
-      
+    random_font_indices = random.sample(font_indices, batch_size)
+    for i, index in enumerate(random_font_indices):
+      img = cv2.imread(filepaths[index], cv2.IMREAD_GRAYSCALE)
+      bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      augmented_imgs = augmentImage(bin_img.transpose())
+      augmented_imgs = augmented_imgs.reshape(augmentation_num, HEIGHT, WIDTH, CHANNEL_NUM)
+      for j in range(augmentation_num):
+        tmp_batch_imgs[i + j] = augmented_imgs[j]
+      tmp_batch_labels[i:i + augmentation_num] = labels[index]
+
+    random_data_indices = random.sample(data_indices, data_num)
+    for i, index in enumerate(random_data_indices):
+      batch_imgs[i] = tmp_batch_imgs[index]
+      batch_labels[i] = tmp_batch_labels[index]
+    yield(batch_imgs, batch_labels)
+
+  # batch_img_arrays = np.zeros((batch_size, WIDTH, HEIGHT, CHANNEL_NUM))
+  # batch_labels = np.zeros((batch_size, class_num))
+  # img_ext = os.path.splitext(filepaths[0])[1]
+  # file_num = len(filepaths)
+  # while True:
+  #   for i in range(batch_size):
+  #     index = random.choice(range(file_num))
+  #     img = image.load_img(filepaths[index], grayscale=True, target_size=(WIDTH, HEIGHT))
+  #     array = image.img_to_array(img) / 255.
+  #     batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
+  #     batch_labels[i] = labels[index]
+  #   yield (batch_img_arrays, batch_labels)
 
 
 def loadImages(filepaths):
