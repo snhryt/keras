@@ -109,7 +109,7 @@ def storeImageFilepathsAndLabels(txt_filepath, class_num):
 def generateArrays(filepaths, labels, batch_size, class_num):
   img = cv2.imread(filepaths[0], cv2.IMREAD_GRAYSCALE)
   bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-  augmented_imgs = augmentImage(bin_img.transpose())
+  augmented_imgs = augmentImage(bin_img)
 
   augmentation_num = augmented_imgs.shape[0]
   data_num = augmentation_num * batch_size
@@ -125,17 +125,16 @@ def generateArrays(filepaths, labels, batch_size, class_num):
     for i, index in enumerate(random_font_indices):
       img = cv2.imread(filepaths[index], cv2.IMREAD_GRAYSCALE)
       bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-      augmented_imgs = augmentImage(bin_img.transpose())
+      augmented_imgs = augmentImage(bin_img)
       augmented_imgs = augmented_imgs.reshape(augmentation_num, HEIGHT, WIDTH, CHANNEL_NUM)
-      for j in range(augmentation_num):
-        tmp_batch_imgs[i + j] = augmented_imgs[j]
+      tmp_batch_imgs[i:i + augmentation_num] = augmented_imgs[0:augmentation_num]
       tmp_batch_labels[i:i + augmentation_num] = labels[index]
 
     random_data_indices = random.sample(data_indices, data_num)
     for i, index in enumerate(random_data_indices):
       batch_imgs[i] = tmp_batch_imgs[index]
       batch_labels[i] = tmp_batch_labels[index]
-    yield(batch_imgs, batch_labels)
+    yield (batch_imgs, batch_labels)
 
   # batch_img_arrays = np.zeros((batch_size, WIDTH, HEIGHT, CHANNEL_NUM))
   # batch_labels = np.zeros((batch_size, class_num))
@@ -155,7 +154,7 @@ def loadImages(filepaths):
   img_ext = os.path.splitext(filepaths[0])[1]
   print ('\n[Loading {0} {1} images]'.format(len(filepaths), img_ext))
   img_arrays = np.zeros((len(filepaths), WIDTH, HEIGHT, CHANNEL_NUM))
-  for (i, path) in enumerate(filepaths):
+  for i, path in enumerate(filepaths):
     if img_ext == '.png' or img_ext == '.jpg':
       img = image.load_img(path, grayscale=True, target_size=(WIDTH, HEIGHT))
       array = image.img_to_array(img) / 255.
@@ -164,8 +163,33 @@ def loadImages(filepaths):
     img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
     if (i + 1) % 1000 == 0:
       print ('.. {} images are loaded'.format(i + 1))
+  print ('.. {} images are loaded'.format(len(filepaths)))    
   return img_arrays
 
+def storeAugmentedImages(imgs, labels, class_num, start_index, indices, thresh):
+  batch_imgs = np.empty((0, HEIGHT, WIDTH, 1))
+  batch_labels = np.empty((0, class_num))
+  counter = 0
+  while start_index < len(indices):
+    index = indices[start_index]
+    img = imgs[index]
+    img = img.reshape(img.shape[0], img.shape[1])
+    label = labels[index]
+    augmented_imgs = augmentImage(img)
+    augmented_imgs = augmented_imgs.reshape(augmented_imgs.shape[0], augmented_imgs.shape[1], 
+                                            augmented_imgs.shape[2], CHANNEL_NUM)
+    augmented_imgs /= 255.
+    augmented_labels = np.empty((augmented_imgs.shape[0], class_num))
+    augmented_labels[:,:] = label
+    batch_imgs = np.append(batch_imgs, augmented_imgs, axis=0)
+    batch_labels = np.append(batch_labels, augmented_labels, axis=0)
+    counter += 1
+    if counter == thresh:
+      break
+    start_index += 1
+    if start_index == len(indices):
+      start_index = 0
+  return batch_imgs, batch_labels
 
 def main():
   # コマンドラインから引数を与える
@@ -225,14 +249,60 @@ def main():
       callbacks=[checkpointer, early_stopping, tensor_board]
     )
   else:
-    # train, validationの画像をすべて読み込んで学習を行う
+  #   # train, validationの画像をすべて読み込んで学習を行う
+  #   train_img_arrays = loadImages(train_filepaths)
+  #   val_img_arrays = loadImages(val_filepaths)
+  #   history = model.fit(
+  #     train_img_arrays, train_labels, batch_size=args.batch_size, epochs=args.epochs, 
+  #     validation_data=(val_img_arrays,val_labels),
+  #     callbacks=[checkpointer, early_stopping, tensor_board]
+  #   )
+  
     train_img_arrays = loadImages(train_filepaths)
     val_img_arrays = loadImages(val_filepaths)
-    history = model.fit(
-      train_img_arrays, train_labels, batch_size=args.batch_size, epochs=args.epochs, 
-      validation_data=(val_img_arrays,val_labels),
-      callbacks=[checkpointer, early_stopping, tensor_board]
-    )
+    train_img_indices = [i for i in range(len(train_img_arrays))]
+    val_img_indices = [i for i in range(len(val_img_arrays))]
+    # random.shuffle(train_img_indices)
+    # random.shuffle(val_img_indices)
+
+    print('\n[Augmentation and train CNN]')
+    train_batch_num, val_batch_num = args.batch_size, args.batch_size / 10
+    for i in range(30):
+      augmented_train_imgs, augmented_train_labels = storeAugmentedImages(
+        imgs=train_img_arrays, 
+        labels=train_labels, 
+        class_num=args.class_num, 
+        start_index=i * train_batch_num, 
+        indices=train_img_indices, 
+        thresh=train_batch_num
+      )
+      train_data_num = augmented_train_imgs.shape[0]
+      train_data_indices = [j for j in range(train_data_num)]
+      random.shuffle(train_data_indices)
+      shuffled_train_imgs = np.empty((train_data_num, HEIGHT, WIDTH, CHANNEL_NUM))
+      shuffled_train_labels = np.empty((train_data_num, args.class_num))
+      for j, index in enumerate(train_data_indices):
+        shuffled_train_imgs[j] = augmented_train_imgs[index]
+        shuffled_train_labels[j] = augmented_train_labels[index]
+
+      augmented_val_imgs, augmented_val_labels = storeAugmentedImages(
+        imgs=val_img_arrays, 
+        labels=val_labels, 
+        class_num=args.class_num, 
+        start_index=i * val_batch_num, 
+        indices=val_img_indices, 
+        thresh=val_batch_num
+      )
+
+      if i == 0:
+        print('.. #train data: {}, #valdation data: {}'.format(train_data_num, 
+                                                              augmented_val_imgs.shape[0]))
+      history = model.fit(
+        shuffled_train_imgs, shuffled_train_labels, batch_size=args.batch_size, epochs=args.epochs, 
+        validation_data=(augmented_val_imgs, augmented_val_labels),
+        callbacks=[checkpointer, early_stopping, tensor_board]
+      )
+  
   
   # 学習履歴の保存
   history_filepath = makeFullFilepath(args.target_dirpath, 'history.pickle')
