@@ -40,40 +40,34 @@ if not os.path.isdir(output_dirpath):
 
 # draw test image itself and a bar graph of classified result
 x = [i for i in range(results.shape[1])]
-for i, img in enumerate(test_imgs):
+for img, filename, probs in zip(test_imgs, test_filenames, results):
   if args.gray:
     img = img.reshape(args.height, args.width, 1)
   else:
     img = img.reshape(args.height, args.width, 3)    
   img = image.array_to_img(img, scale=True)
-  output_img_filepath = mergeFilepaths(output_dirpath, test_filenames[i])
-  output_txt_filename = os.path.splitext(test_filenames[i])[0] + '.txt'
-  output_txt_filepath = mergeFilepaths(output_dirpath, output_txt_filename)
+  output_img_filepath = mergeFilepaths(output_dirpath, filename)
+
+  # get class index that has highest probability
+  highest_prob_index = probs.argsort()[::-1][0]
 
   fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(4,3))
   # axes[0](left side): test image
   axes[0].imshow(img, cmap='Greys_r')
-  axes[0].set_title('input image', fontsize=16)
+  axes[0].set_title('input image')
   # axes[1](right side): bar graph
-  axes[1].bar(left=x, height=results[i], align='center')
+  axes[1].bar(left=x, height=probs, width=1.0, color='blue', align='center')
   axes[1].set_xlim(0, results.shape[1])
   axes[1].set_ylim(0.0, 1.0)
-  axes[1].set_xlabel('class')
-  axes[1].set_ylabel('probability')
+  xlabel = 'class label (top:' + str(highest_prob_index) + ')'
+  ylabel = 'probability (top:' + '{0:0.3f}'.format(probs[highest_prob_index]) + ')'
+  axes[1].set_xlabel(xlabel)
+  axes[1].set_ylabel(ylabel)
   axes[1].grid(True)
-
   fig.tight_layout()
   plt.close()
   fig.savefig(output_img_filepath)
-
-  top_classes = results[i].argsort()[::-1]
-  with open(output_txt_filepath, mode='w') as f:
-    for j in range(3):
-      class_index = top_classes[j]
-      if results[i][class_index] < 0.0001:
-        break
-      str_prob = '{0:0.3f}'.format(results[i][class_index])
-      f.writelines(str(j + 1) + ': ' + str(class_index) + ' (prob = ' + str_prob + ')\n')
+  print('kado desu ensyu ganbatte!!') # thank you!!!!!
     
 
 '''
