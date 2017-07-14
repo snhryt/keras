@@ -56,7 +56,7 @@ for img, filename, probs in zip(test_imgs, test_filenames, results):
   axes[0].imshow(img, cmap='Greys_r')
   axes[0].set_title('input image')
   # axes[1](right side): bar graph
-  axes[1].bar(left=x, height=probs, width=1.0, color='blue', align='center')
+  axes[1].bar(left=x, height=probs, width=1.0, color='b', align='center')
   axes[1].set_xlim(0, results.shape[1])
   axes[1].set_ylim(0.0, 1.0)
   xlabel = 'class label (top:' + str(highest_prob_index) + ')'

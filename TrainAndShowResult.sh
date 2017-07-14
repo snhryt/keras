@@ -2,7 +2,7 @@
 set -e
 
 PARENT_DIRPATH="/media/snhryt/Data/Research_Master/"
-TARGET_DIRPATH="${PARENT_DIRPATH}keras/MyWork/capA_6628fonts/"
+TARGET_DIRPATH="${PARENT_DIRPATH}keras/MyWork/capA_Augmentation/"
 CLASS_NUM=100
 BATCH_SIZE=256
 EPOCHS=50
@@ -26,3 +26,4 @@ python python/ShowResult.py \
        ${CLASS_NUM} \
        --alphabet=${ALPHABET}
 
+# python python/DrawRecogResult.py /media/snhryt/Data/Research_Master/Real_Images/Characters_Resized_Selected/capA/ /media/snhryt/Data/Research_Master/keras/MyWork/capA_NoAugumentation/ -g

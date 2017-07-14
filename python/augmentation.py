@@ -176,50 +176,65 @@ def storeNoisyImages(imgs):
 
 # def storeTranslatedImages(imgs, output_imgs):
 
+def augmentImage(img, augmentation_num=None, scale_down=True, rotation=True, stretch=True, 
+                 jaggy=True, noise=True):
+  augmented_imgs = np.empty((0, img.shape[0], img.shape[1]))
+  # input image
+  augmented_imgs = np.append(augmented_imgs, img[np.newaxis,:,:], axis=0)
+  if scale_down:
+    scale_down_imgs = storeScaleDownImages(augmented_imgs)
+    augmented_imgs = np.append(augmented_imgs, scale_down_imgs, axis=0)
+    del scale_down_imgs
+  if rotation:
+    rotated_imgs = storeRotatedImages(augmented_imgs)
+    augmented_imgs = np.append(augmented_imgs, rotated_imgs, axis=0)
+    del rotated_imgs
+  if stretch:
+    stretched_imgs = storeStretchedImages(augmented_imgs)
+    augmented_imgs = np.append(augmented_imgs, stretched_imgs, axis=0)
+    del stretched_imgs
+  if jaggy:
+    jaggy_imgs = storeJaggyImages(augmented_imgs)
+    augmented_imgs = np.append(augmented_imgs, jaggy_imgs, axis=0)
+    del jaggy_imgs
+  if noise:
+    noisy_imgs = storeNoisyImages(augmented_imgs)
+    augmented_imgs = np.append(augmented_imgs, noisy_imgs, axis=0)
+    del noisy_imgs
+
+  if augmentation_num:
+    if augmentation_num > augmented_imgs.shape[0]:
+      print('augmentation_num={}'.format(augmentation_num) 
+            + ' > augmented_imgs.shape[0]={}'.format(augmented_imgs.shape[0]))
+    else:
+      selected_augmented_imgs = np.empty((0, img.shape[0], img.shape[1]))
+      selected_augmented_imgs = np.append(selected_augmented_imgs, img[np.newaxis,:,:], axis=0)
+      img_indices = [i for i in range(1, augmented_imgs.shape[0])]
+      random_indices = random.sample(img_indices, augmentation_num - 1)
+      for i, index in enumerate(random_indices):
+        selected_augmented_imgs = np.append(selected_augmented_imgs, 
+                                            augmented_imgs[index][np.newaxis,:,:], axis=0)
+      return selected_augmented_imgs
+  return augmented_imgs
+
 def showImage(img):
   cv2.imshow('', img)
   cv2.waitKey(0)
   cv2.destroyAllWindows()
 
-def augmentImage(img):
-  augmented_imgs = np.empty((0, img.shape[0], img.shape[1]))
-  # input (= no change)
-  augmented_imgs = np.append(augmented_imgs, img[np.newaxis,:,:], axis=0)
-  # scale down
-  scale_down_imgs = storeScaleDownImages(augmented_imgs)
-  augmented_imgs = np.append(augmented_imgs, scale_down_imgs, axis=0)
-  del scale_down_imgs
-  # rotation
-  rotated_imgs = storeRotatedImages(augmented_imgs)
-  augmented_imgs = np.append(augmented_imgs, rotated_imgs, axis=0)
-  del rotated_imgs
-  # stretch
-  stretched_imgs = storeStretchedImages(augmented_imgs)
-  augmented_imgs = np.append(augmented_imgs, stretched_imgs, axis=0)
-  del stretched_imgs
-  # generate jagginess
-  jaggy_imgs = storeJaggyImages(augmented_imgs)
-  augmented_imgs = np.append(augmented_imgs, jaggy_imgs, axis=0)
-  del jaggy_imgs
-  # generate papper noise
-  noisy_imgs = storeNoisyImages(augmented_imgs)
-  augmented_imgs = np.append(augmented_imgs, noisy_imgs, axis=0)
-  del noisy_imgs
-
-  return augmented_imgs
-  # print augmented_imgs.shape
-  # output_dirpath = '/home/snhryt/Desktop/augmentation/'
-  # for i, img in enumerate(augmented_imgs):
-  #   output_filepath = output_dirpath + '{0:03d}'.format(i) + '.png'
-  #   cv2.imwrite(output_filepath, img)
+def main():
+  img_filepath = ('/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + 
+                  'A750-Sans-Regular/capA_A750-Sans-Regular.png')
+  img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
+  bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+  augmented_imgs = augmentImage(bin_img)
+  print augmented_imgs.shape
+  
+  output_dirpath = '/home/snhryt/Desktop/augmentation/'
+  for i, img in enumerate(augmented_imgs):
+    output_filepath = output_dirpath + '{0:03d}'.format(i) + '.png'
+    cv2.imwrite(output_filepath, img)
 
 
-# def main():
-#   img_filepath = ('/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + 
-#                   '00-Starmap-Truetype/capA_00-Starmap-Truetype.png')
-#   img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
-#   bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-#   augmentImage(bin_img)
-
-
-# main()
+if __name__ == "__main__":
+  main()

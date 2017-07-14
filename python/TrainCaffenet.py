@@ -12,18 +12,12 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard
 from keras.utils import np_utils, plot_model
 import numpy as np
 
+from CommonFunc import mergeFilepaths
 from augmentation import augmentImage
 
-CHANNEL_NUM, WIDTH, HEIGHT = 1, 100, 100
+HEIGHT, WIDTH, CHANNEL_NUM = 100, 100, 1
 
-def makeFullFilepath(dirpath, filename):
-  if dirpath[-1] == '/':
-    filepath = dirpath + filename
-  else:
-    filepath = dirpath + '/' + filename
-  return filepath
-
-def buildCaffenet(class_num, channel_num=3, img_width=224, img_height=224):
+def buildCaffenet(class_num, height=224, width=224, channel_num=3):
   from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
   from keras.layers.core import Dense, Dropout, Activation, Flatten
   from keras.layers.normalization import BatchNormalization
@@ -35,7 +29,7 @@ def buildCaffenet(class_num, channel_num=3, img_width=224, img_height=224):
   # Conv1
   model.add(
     Convolution2D(filters=96, kernel_size=(5,5), border_mode='valid', 
-                  input_shape=(img_width, img_height, channel_num), 
+                  input_shape=(height, width, channel_num), 
                   subsample=(2, 2), W_regularizer=l2(weight_decay), name='conv1')
   )
   model.add(Activation('relu'))
@@ -78,20 +72,10 @@ def buildCaffenet(class_num, channel_num=3, img_width=224, img_height=224):
   return model
 
 
-def countLineNum(txt_filepath):
-  line_num = 0
-  with open(txt_filepath) as f:
-    line = f.readline()
-    while line:
-      line_num += 1
-      line = f.readline()
-  return line_num
-
-
 def storeImageFilepathsAndLabels(txt_filepath, class_num):
   print('\n[Loading "{}"]'.format(txt_filepath))
-  total = countLineNum(txt_filepath)
-  print('.. total: {} files'.format(total))
+  #total = countLineNum(txt_filepath)
+  #print('.. total: {} files'.format(total))
   filepaths, labels = [], []
   with open(txt_filepath) as f:
     line = f.readline()
@@ -107,47 +91,44 @@ def storeImageFilepathsAndLabels(txt_filepath, class_num):
 
 
 def generateArrays(filepaths, labels, batch_size, class_num):
-  img = cv2.imread(filepaths[0], cv2.IMREAD_GRAYSCALE)
-  bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-  augmented_imgs = augmentImage(bin_img)
-
-  augmentation_num = augmented_imgs.shape[0]
-  data_num = augmentation_num * batch_size
-  font_indices = [i for i in range(len(filepaths))]
-  data_indices = [i for i in range(data_num)]
-  tmp_batch_imgs = np.empty((data_num, HEIGHT, WIDTH, CHANNEL_NUM))
-  tmp_batch_labels = np.empty((data_num, class_num))
-  batch_imgs = np.empty((data_num, HEIGHT, WIDTH, CHANNEL_NUM))
-  batch_labels = np.empty((data_num, class_num))
-
+  batch_img_arrays = np.empty((batch_size, WIDTH, HEIGHT, CHANNEL_NUM))
+  batch_labels = np.empty((batch_size, class_num))
+  img_ext = os.path.splitext(filepaths[0])[1]
+  file_num = len(filepaths)
   while True:
-    random_font_indices = random.sample(font_indices, batch_size)
-    for i, index in enumerate(random_font_indices):
-      img = cv2.imread(filepaths[index], cv2.IMREAD_GRAYSCALE)
-      bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-      augmented_imgs = augmentImage(bin_img)
-      augmented_imgs = augmented_imgs.reshape(augmentation_num, HEIGHT, WIDTH, CHANNEL_NUM)
-      tmp_batch_imgs[i:i + augmentation_num] = augmented_imgs[0:augmentation_num]
-      tmp_batch_labels[i:i + augmentation_num] = labels[index]
+    for i in range(batch_size):
+      index = random.choice(range(file_num))
+      img = image.load_img(filepaths[index], grayscale=True, target_size=(WIDTH, HEIGHT))
+      array = image.img_to_array(img) / 255.
+      batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
+      batch_labels[i] = labels[index]
+    yield (batch_img_arrays, batch_labels)
 
-    random_data_indices = random.sample(data_indices, data_num)
-    for i, index in enumerate(random_data_indices):
-      batch_imgs[i] = tmp_batch_imgs[index]
-      batch_labels[i] = tmp_batch_labels[index]
-    yield (batch_imgs, batch_labels)
+  # augmentation_num = augmented_imgs.shape[0]
+  # data_num = augmentation_num * batch_size
+  # font_indices = [i for i in range(len(filepaths))]
+  # data_indices = [i for i in range(data_num)]
+  # tmp_batch_imgs = np.empty((data_num, HEIGHT, WIDTH, CHANNEL_NUM))
+  # tmp_batch_labels = np.empty((data_num, class_num))
+  # batch_imgs = np.empty((data_num, HEIGHT, WIDTH, CHANNEL_NUM))
+  # batch_labels = np.empty((data_num, class_num))
 
-  # batch_img_arrays = np.zeros((batch_size, WIDTH, HEIGHT, CHANNEL_NUM))
-  # batch_labels = np.zeros((batch_size, class_num))
-  # img_ext = os.path.splitext(filepaths[0])[1]
-  # file_num = len(filepaths)
   # while True:
-  #   for i in range(batch_size):
-  #     index = random.choice(range(file_num))
-  #     img = image.load_img(filepaths[index], grayscale=True, target_size=(WIDTH, HEIGHT))
-  #     array = image.img_to_array(img) / 255.
-  #     batch_img_arrays[i] = array.reshape(1, WIDTH, HEIGHT, CHANNEL_NUM)
-  #     batch_labels[i] = labels[index]
-  #   yield (batch_img_arrays, batch_labels)
+  #   random_font_indices = random.sample(font_indices, batch_size)
+  #   for i, index in enumerate(random_font_indices):
+  #     img = cv2.imread(filepaths[index], cv2.IMREAD_GRAYSCALE)
+  #     bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+  #     augmented_imgs = augmentImage(bin_img)
+  #     augmented_imgs = augmented_imgs.reshape(augmentation_num, HEIGHT, WIDTH, CHANNEL_NUM)
+  #     tmp_batch_imgs[i:i + augmentation_num] = augmented_imgs[0:augmentation_num]
+  #     tmp_batch_labels[i:i + augmentation_num] = labels[index]
+
+  #   random_data_indices = random.sample(data_indices, data_num)
+  #   for i, index in enumerate(random_data_indices):
+  #     batch_imgs[i] = tmp_batch_imgs[index]
+  #     batch_labels[i] = tmp_batch_labels[index]
+  #   yield (batch_imgs, batch_labels)
+
 
 
 def loadImages(filepaths):
@@ -166,30 +147,19 @@ def loadImages(filepaths):
   print ('.. {} images are loaded'.format(len(filepaths)))    
   return img_arrays
 
-def storeAugmentedImages(imgs, labels, class_num, start_index, indices, thresh):
-  batch_imgs = np.empty((0, HEIGHT, WIDTH, 1))
-  batch_labels = np.empty((0, class_num))
-  counter = 0
-  while start_index < len(indices):
-    index = indices[start_index]
-    img = imgs[index]
-    img = img.reshape(img.shape[0], img.shape[1])
-    label = labels[index]
-    augmented_imgs = augmentImage(img)
-    augmented_imgs = augmented_imgs.reshape(augmented_imgs.shape[0], augmented_imgs.shape[1], 
-                                            augmented_imgs.shape[2], CHANNEL_NUM)
+def storeAugmentedImages(imgs, labels, class_num, augmentation_num=None):
+  all_imgs = np.empty((0, HEIGHT, WIDTH, 1))
+  all_labels = np.empty((0, class_num))
+  for img, label in zip(imgs, labels):
+    augmented_imgs = augmentImage(img, augmentation_num=augmentation_num)
     augmented_imgs /= 255.
+    augmented_imgs = augmented_imgs.reshape(augmented_imgs.shape[0], HEIGHT, WIDTH, 1)
     augmented_labels = np.empty((augmented_imgs.shape[0], class_num))
     augmented_labels[:,:] = label
-    batch_imgs = np.append(batch_imgs, augmented_imgs, axis=0)
-    batch_labels = np.append(batch_labels, augmented_labels, axis=0)
-    counter += 1
-    if counter == thresh:
-      break
-    start_index += 1
-    if start_index == len(indices):
-      start_index = 0
-  return batch_imgs, batch_labels
+    all_imgs = np.append(all_imgs, augmented_imgs, axis=0)
+    all_labels = np.append(all_labels, augmented_labels, axis=0)
+  return all_imgs, all_labels
+
 
 def main():
   # コマンドラインから引数を与える
@@ -209,20 +179,20 @@ def main():
   start = time.time()
 
   # caffenetの構築およびコンパイル
-  model_filepath = makeFullFilepath(args.target_dirpath, 'model.hdf5')
-  model = buildCaffenet(class_num=args.class_num, channel_num=CHANNEL_NUM, img_width=WIDTH,
-                        img_height=HEIGHT)
+  model_filepath = mergeFilepaths(args.target_dirpath, 'model.hdf5')
+  model = buildCaffenet(class_num=args.class_num, height=HEIGHT, width=WIDTH,
+                        channel_num=CHANNEL_NUM)
   model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
   # モデル構造の書き出し
-  png_filepath = makeFullFilepath(args.target_dirpath, 'ModelStructure.png')
+  png_filepath = mergeFilepaths(args.target_dirpath, 'ModelStructure.png')
   plot_model(model, to_file=png_filepath, show_shapes=True, show_layer_names=True)
 
   # train, validation に使うデータのファイルパスおよびそのラベルを格納
-  train_txt_filepath = makeFullFilepath(args.target_dirpath, 'train.txt')
+  train_txt_filepath = mergeFilepaths(args.target_dirpath, 'train.txt')
   train_filepaths, train_labels = storeImageFilepathsAndLabels(txt_filepath=train_txt_filepath, 
                                                                class_num=args.class_num)
-  val_txt_filepath = makeFullFilepath(args.target_dirpath, 'validation.txt')
+  val_txt_filepath = mergeFilepaths(args.target_dirpath, 'validation.txt')
   val_filepaths, val_labels = storeImageFilepathsAndLabels(txt_filepath=val_txt_filepath, 
                                                            class_num=args.class_num)
 
@@ -232,7 +202,7 @@ def main():
   # patientce： 何回連続で損失の最小値が更新されなかったらループを止めるか
   early_stopping = EarlyStopping(monitor='loss', patience=10, verbose=1)
   tensor_board = TensorBoard(log_dir=args.target_dirpath+'graph', histogram_freq=0, 
-                             write_graph=False, write_images=True)
+                             write_graph=False, write_images=False)
 
   # generator を生成して batch_size 枚の画像(.npy)ごとに学習を行う
   if args.generator_training:
@@ -249,63 +219,45 @@ def main():
       callbacks=[checkpointer, early_stopping, tensor_board]
     )
   else:
-  #   # train, validationの画像をすべて読み込んで学習を行う
-  #   train_img_arrays = loadImages(train_filepaths)
-  #   val_img_arrays = loadImages(val_filepaths)
-  #   history = model.fit(
-  #     train_img_arrays, train_labels, batch_size=args.batch_size, epochs=args.epochs, 
-  #     validation_data=(val_img_arrays,val_labels),
-  #     callbacks=[checkpointer, early_stopping, tensor_board]
-  #   )
-  
-    train_img_arrays = loadImages(train_filepaths)
-    val_img_arrays = loadImages(val_filepaths)
-    train_img_indices = [i for i in range(len(train_img_arrays))]
-    val_img_indices = [i for i in range(len(val_img_arrays))]
-    # random.shuffle(train_img_indices)
-    # random.shuffle(val_img_indices)
+    # train, validationの画像をすべて読み込んで学習を行う
+    # train_img_arrays = loadImages(train_filepaths)
+    # val_img_arrays = loadImages(val_filepaths)
+    # history = model.fit(
+    #   train_img_arrays, train_labels, batch_size=args.batch_size, epochs=args.epochs, 
+    #   validation_data=(val_img_arrays,val_labels),
+    #   callbacks=[checkpointer, early_stopping, tensor_board]
+    # )
+    train_imgs = np.empty((0, HEIGHT, WIDTH))
+    print('\n[Augment train data]')
+    for i, filepath in enumerate(train_filepaths):
+      img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+      bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      train_imgs = np.append(train_imgs, bin_img[np.newaxis,:,:], axis=0)
+      if (i + 1) % 100 == 0:
+        print('.. {} images are augmented'.format(i + 1))
+    val_imgs = np.empty((0, HEIGHT, WIDTH))
+    print('\n[Augment validation data]')    
+    for i, filepath in enumerate(val_filepaths):
+      img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+      bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      val_imgs = np.append(val_imgs, bin_img[np.newaxis,:,:], axis=0)
+      if (i + 1) % 100 == 0:
+        print('.. {} images are augmented'.format(i + 1))
 
-    print('\n[Augmentation and train CNN]')
-    train_batch_num, val_batch_num = args.batch_size, args.batch_size / 10
-    for i in range(30):
-      augmented_train_imgs, augmented_train_labels = storeAugmentedImages(
-        imgs=train_img_arrays, 
-        labels=train_labels, 
-        class_num=args.class_num, 
-        start_index=i * train_batch_num, 
-        indices=train_img_indices, 
-        thresh=train_batch_num
-      )
-      train_data_num = augmented_train_imgs.shape[0]
-      train_data_indices = [j for j in range(train_data_num)]
-      random.shuffle(train_data_indices)
-      shuffled_train_imgs = np.empty((train_data_num, HEIGHT, WIDTH, CHANNEL_NUM))
-      shuffled_train_labels = np.empty((train_data_num, args.class_num))
-      for j, index in enumerate(train_data_indices):
-        shuffled_train_imgs[j] = augmented_train_imgs[index]
-        shuffled_train_labels[j] = augmented_train_labels[index]
-
-      augmented_val_imgs, augmented_val_labels = storeAugmentedImages(
-        imgs=val_img_arrays, 
-        labels=val_labels, 
-        class_num=args.class_num, 
-        start_index=i * val_batch_num, 
-        indices=val_img_indices, 
-        thresh=val_batch_num
-      )
-
-      if i == 0:
-        print('.. #train data: {}, #valdation data: {}'.format(train_data_num, 
-                                                              augmented_val_imgs.shape[0]))
-      history = model.fit(
-        shuffled_train_imgs, shuffled_train_labels, batch_size=args.batch_size, epochs=args.epochs, 
-        validation_data=(augmented_val_imgs, augmented_val_labels),
-        callbacks=[checkpointer, early_stopping, tensor_board]
-      )
-  
+    augmented_train_imgs, augmented_train_labels = storeAugmentedImages(
+        train_imgs, train_labels, args.class_num, augmentation_num=100
+    )
+    augmented_val_imgs, augmented_val_labels = storeAugmentedImages(
+        val_imgs, val_labels, args.class_num, augmentation_num=100
+    )
+    history = model.fit(
+      augmented_train_imgs, augmented_train_labels, batch_size=args.batch_size, epochs=args.epochs, 
+      validation_data=(augmented_val_imgs, augmented_val_labels), shuffle=True, 
+      callbacks=[checkpointer, early_stopping, tensor_board]
+    )
   
   # 学習履歴の保存
-  history_filepath = makeFullFilepath(args.target_dirpath, 'history.pickle')
+  history_filepath = mergeFilepaths(args.target_dirpath, 'history.pickle')
   with open(history_filepath, mode='wb') as f:
     pickle.dump(history.history, f)
 
