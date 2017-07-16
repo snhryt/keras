@@ -32,8 +32,9 @@ def embedImage(fimg, x_tl=0, y_tl=0, angle=0.0):
   x_start = ((bimg_height - fimg_height) / 2) + x_tl
   if y_start >= fimg_height or x_start >= fimg_width:
     raise ValueError('x_tl and y_tl must be in ({0}, {1})'.format(-((bimg_width - fimg_width) / 2), 
-                     (bimg_width - fimg_width) / 2))
-  bimg[y_start:y_start + fimg_height, x_start:x_start + fimg_width] = fimg[0:fimg_height, 0:fimg_height]
+                                                                  (bimg_width - fimg_width) / 2))
+  bimg[y_start:y_start + fimg_height, x_start:x_start + fimg_width] = fimg[0:fimg_height,  
+                                                                           0:fimg_width]
 
   if angle != 0.0:
     affine_matrix = cv2.getRotationMatrix2D((bimg_height / 2, bimg_width / 2), angle, 1.0)
@@ -81,13 +82,13 @@ def getSquareImage(roi_img):
   
 
 def storeScaleDownImages(imgs):
-  output_imgs = np.empty((0, imgs[0].shape[0], imgs[0].shape[1]))
+  output_imgs = []
   for i,img in enumerate(imgs):
     large_img = embedImage(img)
     margin = Margin(img)
     roi = getRoi(large_img)
     roi_copy = list(roi) # 参照渡しの浅いコピーにならないように深いコピー
-    for delta in [6, 12, 18, 24]:
+    for delta in [6, 12, 18, 24, 30]:
       roi[0] -= (margin.left + delta)
       roi[1] -= (margin.top + delta)
       roi[2] += margin.left + margin.right + delta * 2
@@ -95,12 +96,13 @@ def storeScaleDownImages(imgs):
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       square_img = getSquareImage(roi_img)
       resized_img = cv2.resize(square_img, img.shape[:2])
-      output_imgs = np.append(output_imgs, resized_img[np.newaxis,:,:], axis=0)
+      output_imgs.append(resized_img)
       roi = list(roi_copy)
+  output_imgs = np.array(output_imgs)
   return output_imgs
 
 def storeRotatedImages(imgs):
-  output_imgs = np.empty((0, imgs[0].shape[0], imgs[0].shape[1]))
+  output_imgs = []
   for i, img in enumerate(imgs):
     margin = Margin(img)
     for angle in [-8.0, -4.0, 4.0, 8.0]:
@@ -115,12 +117,13 @@ def storeRotatedImages(imgs):
       roi_img = bin_large_rotated_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       square_img = getSquareImage(roi_img)
       resized_img = cv2.resize(square_img, img.shape[:2])
-      output_imgs = np.append(output_imgs, resized_img[np.newaxis,:,:], axis=0)
+      output_imgs.append(resized_img)
+  output_imgs = np.array(output_imgs)  
   return output_imgs
 
 
 def storeStretchedImages(imgs):
-  output_imgs = np.empty((0, imgs[0].shape[0], imgs[0].shape[1]))
+  output_imgs = []
   for i, img in enumerate(imgs):
     large_img = embedImage(img)
     quarter_length = (large_img.shape[0] - img.shape[0]) / 2
@@ -133,7 +136,7 @@ def storeStretchedImages(imgs):
       roi[3] -= delta * 2
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       resized_img = cv2.resize(roi_img, img.shape[:2])
-      output_imgs = np.append(output_imgs, resized_img[np.newaxis,:,:], axis=0)
+      output_imgs.append(resized_img)
       roi = list(roi_copy)
     for delta in [5, 10, 15]:
       roi[0] += delta
@@ -142,42 +145,42 @@ def storeStretchedImages(imgs):
       roi[3] += delta * 2
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       resized_img = cv2.resize(roi_img, img.shape[:2])
-      output_imgs = np.append(output_imgs, resized_img[np.newaxis,:,:], axis=0)
+      output_imgs.append(resized_img)      
       roi = list(roi_copy)
+  output_imgs = np.array(output_imgs)
   return output_imgs
 
 
 def storeJaggyImages(imgs):
-  output_imgs = np.empty((0, imgs[0].shape[0], imgs[0].shape[1]))  
+  output_imgs = []
   for i, img in enumerate(imgs):
     small_img = cv2.resize(img, (30, 30))
     resized_img = cv2.resize(small_img, img.shape[:2])
-    output_imgs = np.append(output_imgs, resized_img[np.newaxis,:,:], axis=0)
+    output_imgs.append(resized_img)
+  output_imgs = np.array(output_imgs)
   return output_imgs
 
-def storeNoisyImages(imgs):
+def storeNoisyImages(imgs, img_num=100):
   indices = [i for i in range(1, len(imgs))]
-  random_indices = random.sample(indices, 100)
+  random_indices = random.sample(indices, img_num)
   height, width = imgs[0].shape[:2]
-  output_imgs = np.empty((0, height, width))
+  output_imgs = []
   pixels = [i for i in range(height * width)]
   for i, index in enumerate(random_indices):
     img_copy = imgs[index].copy()
     reshaped_img = img_copy.reshape(height * width)
     noise_pixels = random.sample(pixels, 20)
     for j, pixel in enumerate(noise_pixels):
-      if reshaped_img[pixel] == 0:
-        reshaped_img[pixel] = 255
-      else:
-        reshaped_img[pixel] = 0
+      reshaped_img[pixel] = reshaped_img[pixel] % 255
     noisy_img = reshaped_img.reshape(height, width)
-    output_imgs = np.append(output_imgs, noisy_img[np.newaxis,:,:], axis=0)
+    output_imgs.append(noisy_img)
+  output_imgs = np.array(output_imgs)
   return output_imgs
 
 # def storeTranslatedImages(imgs, output_imgs):
 
 def augmentImage(img, augmentation_num=None, scale_down=True, rotation=True, stretch=True, 
-                 jaggy=True, noise=True):
+                 jaggy=True, noise=False):
   augmented_imgs = np.empty((0, img.shape[0], img.shape[1]))
   # input image
   augmented_imgs = np.append(augmented_imgs, img[np.newaxis,:,:], axis=0)
@@ -228,7 +231,7 @@ def main():
   img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
   bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
   augmented_imgs = augmentImage(bin_img)
-  print augmented_imgs.shape
+  print('augmented_imgs.shape = {}'.format(augmented_imgs.shape))
   
   output_dirpath = '/home/snhryt/Desktop/augmentation/'
   for i, img in enumerate(augmented_imgs):
