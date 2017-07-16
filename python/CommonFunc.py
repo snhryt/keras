@@ -28,6 +28,14 @@ def isImage(filepath):
       return True
   return False
 
+def showProcessingTime(processing_time):
+  if processing_time < 60 * 2:
+    print('processing time: {}[s]'.format(processing_time))
+  elif processing_time < 60 * 60:
+    print('processing time: {}[m]'.format(processing_time / 60))
+  else:
+    print('processing time: {}[h]'.format(processing_time / 60 * 60))    
+
 def storeFontIndex(txt_filepath):
   index_font_dict = {}
   with open(txt_filepath) as f:
@@ -40,57 +48,57 @@ def storeFontIndex(txt_filepath):
       line = f.readline()
   return index_font_dict
 
-def loadImages(path, need_filename=False, height=100, width=100, gray=True):
-  channel_num = 1 if gray else 3
-
-  if need_filename:
-    imgs = np.empty((0, height, width, channel_num))
-    filenames = []
-    if os.path.isdir(path):
-      for filename in os.listdir(path):
-        if not isImage(filename):
-          continue
-        img_filepath = mergeFilepaths(path, filename)
-        if gray:
-          gray_img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
-          img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-          img = img.reshape(height, width, channel_num)
-        else:
-          img = cv2.imread(img_filepath)
-        imgs = np.append(imgs, img[np.newaxis,:,:,:], axis=0)
-        filenames.append(filename)
-      return imgs, filenames
-    else:
-      if gray:
-        gray_img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
-        img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-        img = img.reshape(height, width, channel_num)
-      else:
-        img = cv2.imread(img_filepath)
-      img = img.reshape(1, height, width, channel_num)
-      filename = os.path.basename(path)
-      return img, filename
-
+def loadSingleImage(filepath, channel_num=1):
+  if channel_num == 1:
+    gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+    img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+    img = img.reshape(img.shape[0], img.shape[1], 1)
   else:
-    if os.path.isdir(path):
-      imgs = np.empty((0, height, width, channel_num))
-      for filename in os.path.listdir(path):
-        if not isImage(filename):
-          continue
-        img_filepath = mergeFilepaths(path, filename)
-        if gray:
-          gray_img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
-          img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-          img = img.reshape(height, width, channel_num)
-        else:
-          img = cv2.imread(img_filepath)
-        imgs = np.append(imgs, img[np.newaxis,:,:,:], axis=0)
-      return imgs
-    else:
-      if gray:
-        gray_img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
-        img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-        img = img.reshape(height, width, channel_num)
-      else:
-        img = cv2.imread(img_filepath)
-      return img
+    img = cv2.imread(filepath)
+  # img = img.reshape(1, img.shape[0], img.shape[1], channel_num)   
+  return img
+
+def loadImages(dirpath, channel_num=1):
+  imgs = []
+  if channel_num == 1:
+    for filename in os.path.listdir(dirpath):
+      # if not isImage(filename):
+      #   continue
+      filepath = mergeFilepaths(dirpath, filename)
+      gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+      img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      img = img.reshape(img.shape[0], img.shape[1], 1)
+      imgs.append(img)
+  else:
+    for filename in os.path.listdir(dirpath):
+      # if not isImage(filename):
+      #   continue
+      filepath = mergeFilepaths(dirpath, filename)
+      img = cv2.imread(filepath)
+      imgs.append(img)
+  imgs = np.array(imgs)
+  return imgs
+
+def loadImagesAndFilenames(dirpath, channel_num=1):
+  imgs, filenames = [], []
+  if channel_num == 1:
+    for filename in os.path.listdir(dirpath):
+      # if not isImage(filename):
+      #   continue
+      filepath = mergeFilepaths(dirpath, filename)
+      gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+      img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      img = img.reshape(img.shape[0], img.shape[1], 1)
+      imgs.append(img)
+      filenames.append(filename)
+  else:
+    for filename in os.path.listdir(dirpath):
+      # if not isImage(filename):
+      #   continue
+      filepath = mergeFilepaths(dirpath, filename)
+      img = cv2.imread(filepath)
+      imgs.append(img)
+      filenames.append(filename)      
+  imgs = np.array(imgs)
+  return imgs, filenames
+
