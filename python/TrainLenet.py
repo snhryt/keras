@@ -1,10 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
 import time
 import random
 import pickle
-import cv2
 from argparse import ArgumentParser
 from keras.models import Sequential
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
@@ -15,11 +13,10 @@ from CommonFunc import mergeFilepaths, countLineNum, showProcessingTime, loadSin
 from augmentation import augmentImage
 import numpy as np
 
-
-def buildLenet(class_num, height=28, width=28, channel_num=1):
+def buildLenet(class_num, height=32 width=32, channel_num=1):
   model = Sequential()
   # model.add(Convolution2D(filters=20, kernel_size=(5, 5), strides=(1, 1), 
-  #                         input_shape=(img_height, img_width, channel_num), name='conv1'))
+  #                         input_shape=(height, width, channel_num), name='conv1'))
   model.add(Convolution2D(filters=20, kernel_size=(8, 8), strides=(3, 3), 
                           input_shape=(height, width, channel_num), name='conv1'))
   model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
@@ -32,7 +29,6 @@ def buildLenet(class_num, height=28, width=28, channel_num=1):
   model.add(Activation('softmax'))
   model.summary()
   return model
-
 
 def storeImageFilepathsAndLabels(txt_filepath, class_num):
   print('\n[Loading "{}"]'.format(txt_filepath))
@@ -55,8 +51,12 @@ def storeImageFilepathsAndLabels(txt_filepath, class_num):
 
 
 def generateArrays(filepaths, labels, batch_size, channel_num=1):
-  batch_imgs = [None] * batch_size
-  batch_labels = [None] * batch_size
+  # batch_imgs = [None] * batch_size
+  # batch_labels = [None] * batch_size
+  img = loadSingleImage(filepaths[0], channel_num=channel_num)
+  height, width = img.shape[0], img.shape[1]
+  batch_imgs = np.empty((batch_size, height, width, channel_num))
+  batch_labels = np.empty((batch_size, labels.shape[1]))
   indices = [i for i in range(len(filepaths))]
   while True:
     random_indices = random.sample(indices, batch_size)
@@ -64,8 +64,8 @@ def generateArrays(filepaths, labels, batch_size, channel_num=1):
       img = loadSingleImage(filepaths[index], channel_num=channel_num) / 255.
       batch_imgs[i] = img
       batch_labels[i] = labels[index]
-    batch_imgs = np.array(batch_imgs)
-    batch_labels = np.array(batch_labels)
+    # batch_imgs = np.array(batch_imgs)
+    # batch_labels = np.array(batch_labels)
     yield (batch_imgs, batch_labels)
 
 
@@ -121,7 +121,7 @@ def main():
 
   # Build and compile Lenet
   model_filepath = mergeFilepaths(args.target_dirpath, 'model.hdf5')
-  model = buildLenet(class_num=args.class_num, height=args.height, width=args.width,
+  model = buildCaffenet(class_num=args.class_num, height=args.height, width=args.width,
                      channel_num=args.channel_num)
   model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -141,7 +141,7 @@ def main():
   checkpointer = ModelCheckpoint(filepath=model_filepath, monitor='val_acc', verbose=1, 
                                  save_best_only=True, save_weights_only=False)
   early_stopping = EarlyStopping(monitor='val_acc', patience=10, verbose=1)
-  tensor_board = TensorBoard(log_dir=args.target_dirpath+'graph', histogram_freq=0, 
+  tensor_board = TensorBoard(log_dir=args.target_dirpath+'/graph', histogram_freq=0, 
                              write_graph=False, write_images=False)
   
   # Training
