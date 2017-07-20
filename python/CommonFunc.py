@@ -32,9 +32,9 @@ def showProcessingTime(processing_time):
   if processing_time < 60 * 2:
     print('processing time: {}[s]'.format(processing_time))
   elif processing_time < 60 * 60:
-    print('processing time: {}[m]'.format(processing_time / 60))
+    print('processing time: {0:.0f}[m]'.format(processing_time / 60))
   else:
-    print('processing time: {}[h]'.format(processing_time / 60 * 60))    
+    print('processing time: {0:.0f}[h]'.format(processing_time / (60 * 60)))    
 
 def storeFontIndex(txt_filepath):
   index_font_dict = {}
