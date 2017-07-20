@@ -204,19 +204,18 @@ def augmentImage(img, augmentation_num=None, scale_down=True, rotation=True, str
     noisy_imgs = storeNoisyImages(augmented_imgs)
     augmented_imgs = np.append(augmented_imgs, noisy_imgs, axis=0)
     del noisy_imgs
-
+  
   if augmentation_num:
     if augmentation_num > augmented_imgs.shape[0]:
       print('augmentation_num={}'.format(augmentation_num) 
             + ' > augmented_imgs.shape[0]={}'.format(augmented_imgs.shape[0]))
     else:
-      selected_augmented_imgs = np.empty((0, img.shape[0], img.shape[1]))
-      selected_augmented_imgs = np.append(selected_augmented_imgs, img[np.newaxis,:,:], axis=0)
+      selected_augmented_imgs = np.empty((augmentation_num, img.shape[0], img.shape[1]))
+      selected_augmented_imgs[0] = img
       img_indices = [i for i in range(1, augmented_imgs.shape[0])]
       random_indices = random.sample(img_indices, augmentation_num - 1)
       for i, index in enumerate(random_indices):
-        selected_augmented_imgs = np.append(selected_augmented_imgs, 
-                                            augmented_imgs[index][np.newaxis,:,:], axis=0)
+        selected_augmented_imgs[i] = augmented_imgs[index]
       return selected_augmented_imgs
   return augmented_imgs
 
