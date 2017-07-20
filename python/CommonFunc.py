@@ -34,7 +34,9 @@ def showProcessingTime(processing_time):
   elif processing_time < 60 * 60:
     print('processing time: {0:.0f}[m]'.format(processing_time / 60))
   else:
-    print('processing time: {0:.0f}[h]'.format(processing_time / (60 * 60)))    
+    hours = int(processing_time / (60 * 60))
+    minutes = (processing_time - (60 * 60) * hours) / 60
+    print('processing time: {0}[h] {1:.0f}[m]'.format(hours, minutes))    
 
 def storeFontIndex(txt_filepath):
   index_font_dict = {}
@@ -62,8 +64,8 @@ def loadImages(dirpath, channel_num=1):
   imgs = []
   if channel_num == 1:
     for filename in os.path.listdir(dirpath):
-      # if not isImage(filename):
-      #   continue
+      if not isImage(filename):
+        continue
       filepath = mergeFilepaths(dirpath, filename)
       gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
       img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
@@ -71,8 +73,8 @@ def loadImages(dirpath, channel_num=1):
       imgs.append(img)
   else:
     for filename in os.path.listdir(dirpath):
-      # if not isImage(filename):
-      #   continue
+      if not isImage(filename):
+        continue
       filepath = mergeFilepaths(dirpath, filename)
       img = cv2.imread(filepath)
       imgs.append(img)
@@ -83,8 +85,8 @@ def loadImagesAndFilenames(dirpath, channel_num=1):
   imgs, filenames = [], []
   if channel_num == 1:
     for filename in os.path.listdir(dirpath):
-      # if not isImage(filename):
-      #   continue
+      if not isImage(filename):
+        continue
       filepath = mergeFilepaths(dirpath, filename)
       gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
       img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
@@ -93,8 +95,8 @@ def loadImagesAndFilenames(dirpath, channel_num=1):
       filenames.append(filename)
   else:
     for filename in os.path.listdir(dirpath):
-      # if not isImage(filename):
-      #   continue
+      if not isImage(filename):
+        continue
       filepath = mergeFilepaths(dirpath, filename)
       img = cv2.imread(filepath)
       imgs.append(img)
