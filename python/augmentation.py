@@ -5,12 +5,7 @@ import cv2
 import numpy as np
 
 class Margin:
-  left = 0
-  right = 0
-  top = 0
-  bottom = 0
   def __init__(self, bin_img):
-    # bin_img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
     height, width = bin_img.shape[:2]
     reshaped = bin_img.reshape(height * width)
     self.top = reshaped.argmin() / width
@@ -96,7 +91,8 @@ def storeScaleDownImages(imgs):
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       square_img = getSquareImage(roi_img)
       resized_img = cv2.resize(square_img, img.shape[:2])
-      output_imgs.append(resized_img)
+      bin_resized_img = cv2.threshold(resized_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      output_imgs.append(bin_resized_img)
       roi = list(roi_copy)
   output_imgs = np.array(output_imgs)
   return output_imgs
@@ -117,8 +113,9 @@ def storeRotatedImages(imgs):
       roi_img = bin_large_rotated_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       square_img = getSquareImage(roi_img)
       resized_img = cv2.resize(square_img, img.shape[:2])
-      output_imgs.append(resized_img)
-  output_imgs = np.array(output_imgs)  
+      bin_resized_img = cv2.threshold(resized_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      output_imgs.append(bin_resized_img)
+  output_imgs = np.array(output_imgs)
   return output_imgs
 
 
@@ -136,6 +133,8 @@ def storeStretchedImages(imgs):
       roi[3] -= delta * 2
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       resized_img = cv2.resize(roi_img, img.shape[:2])
+      # bin_resized_img = cv2.threshold(resized_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      # output_imgs.append(bin_resized_img)
       output_imgs.append(resized_img)
       roi = list(roi_copy)
     for delta in [5, 10, 15]:
@@ -145,7 +144,9 @@ def storeStretchedImages(imgs):
       roi[3] += delta * 2
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
       resized_img = cv2.resize(roi_img, img.shape[:2])
-      output_imgs.append(resized_img)      
+      # bin_resized_img = cv2.threshold(resized_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+      # output_imgs.append(bin_resized_img)
+      output_imgs.append(resized_img)
       roi = list(roi_copy)
   output_imgs = np.array(output_imgs)
   return output_imgs
@@ -226,7 +227,7 @@ def showImage(img):
 
 def main():
   img_filepath = ('/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + 
-                  'A750-Sans-Regular/capA_A750-Sans-Regular.png')
+                  'Essays-1743/capO_Essays-1743.png')
   img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
   bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
   augmented_imgs = augmentImage(bin_img)
