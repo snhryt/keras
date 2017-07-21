@@ -207,10 +207,7 @@ def augmentImage(img, augmentation_num=None, scale_down=True, rotation=True, str
     del noisy_imgs
   
   if augmentation_num:
-    if augmentation_num > augmented_imgs.shape[0]:
-      print('augmentation_num={}'.format(augmentation_num) 
-            + ' > augmented_imgs.shape[0]={}'.format(augmented_imgs.shape[0]))
-    else:
+    if augmentation_num <= augmented_imgs.shape[0]:
       selected_augmented_imgs = np.empty((augmentation_num, img.shape[0], img.shape[1]))
       selected_augmented_imgs[0] = img
       img_indices = [i for i in range(1, augmented_imgs.shape[0])]
