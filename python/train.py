@@ -120,18 +120,44 @@ class Training:
     return filepaths, labels
 
 
-  def generateArrays(self, filepaths, labels):
-    batch_imgs = np.empty((self.batch_size, self.height, self.width, self.channel_num))
-    batch_labels = np.empty((self.batch_size, self.class_num))
-    indices = [i for i in range(len(filepaths))]
-    while True:
-      random_indices = random.sample(indices, self.batch_size)
-      for i, index in enumerate(random_indices):
-        img = loadSingleImage(filepaths[index], channel_num=self.channel_num)
-        img = img.astype('float32') / 255.
-        batch_imgs[i] = img
-        batch_labels[i] = labels[index]
-      yield batch_imgs, batch_labels
+  def generateArrays(self, filepaths, labels, need_augmentation=False):
+    if need_augmentation:
+      augmentation_num = 50
+      batch_imgs = np.empty((self.batch_size * augmentation_num, self.height, self.width,
+                             self.channel_num))
+      batch_labels = np.empty((self.batch_size * augmentation_num, self.class_num))
+      batch_indices = [i for i in range(self.batch_size * augmentation_num)]
+      random.shuffle(batch_indices)
+      filepath_indices = [i for i in range(len(filepaths))]
+      while True:
+        random_filepath_indices = random.sample(filepath_indices, self.batch_size)
+        for i, index in enumerate(random_filepath_indices):
+          img = loadSingleImage(filepaths[index], channel_num=self.channel_num)
+          img = img.reshape(img.shape[0], img.shape[1])
+          imgs = augmentImage(img, augmentation_num=augmentation_num, rotation=False)
+          for j, img in enumerate(imgs):
+            f_img = img.reshape(self.height, self.width, self.channel_num)
+            f_img = f_img.astype('float32') / 255.
+            batch_imgs[i * augmentation_num + j] = f_img
+            batch_labels[i * augmentation_num + j] = labels[index]
+        tmp_batch_imgs = batch_imgs.copy()
+        tmp_batch_labels = batch_labels.copy()
+        for i, index in enumerate(batch_indices):
+          batch_imgs[i] = tmp_batch_imgs[index]
+          batch_labels[i] = tmp_batch_labels[index]
+        yield batch_imgs, batch_labels
+    else:
+      batch_imgs = np.empty((self.batch_size, self.height, self.width, self.channel_num))
+      batch_labels = np.empty((self.batch_size, self.class_num))
+      indices = [i for i in range(len(filepaths))]
+      while True:
+        random_indices = random.sample(indices, self.batch_size)
+        for i, index in enumerate(random_indices):
+          img = loadSingleImage(filepaths[index], channel_num=self.channel_num)
+          img = img.astype('float32') / 255.
+          batch_imgs[i] = img
+          batch_labels[i] = labels[index]
+        yield batch_imgs, batch_labels
 
 
   def loadImagesThenAugmentation(self, filepaths, labels, augmentation_num=100):
@@ -192,9 +218,9 @@ class Training:
     img_filepath2 = mergeFilepaths(self.target_dirpath, 'history_NoYlimit.png')
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(2, 1, 1)
-    ax2.plot(history['loss'], 'o-', label='loss')
+    ax2.plot(history['loss'], 'o-', label='train-loss')
     ax2.plot(history['val_loss'], 'o-', label='val-loss')
-    ax2.plot(history['acc'], 'o-', label='accuracy')
+    ax2.plot(history['acc'], 'o-', label='train-accuracy')
     ax2.plot(history['val_acc'], 'o-', label='val-accuracy')
     ax2.set_title(title)
     ax2.set_xlabel('epoch')
@@ -224,8 +250,7 @@ class Training:
     val_filepaths, val_labels = self.storeImageFilepathsAndLabels(txt_filepath=val_txt_filepath)
 
     # Set callbacks
-    model_filepath = mergeFilepaths(self.target_dirpath, 'lenet.hdf5')
-    # model_filepath = mergeFilepaths(self.target_dirpath, 'caffenet.hdf5')            
+    model_filepath = mergeFilepaths(self.target_dirpath, 'model.hdf5')
     monitor = 'val_acc'
     checkpointer = ModelCheckpoint(filepath=model_filepath, monitor=monitor, verbose=1, 
                                    save_best_only=True, save_weights_only=False)
@@ -239,9 +264,11 @@ class Training:
       steps_per_epoch = int(len(train_filepaths) / self.batch_size)
       validation_steps = int(len(val_filepaths) / self.batch_size)
       history = model.fit_generator(
-        self.generateArrays(filepaths=train_filepaths, labels=train_labels),
+        self.generateArrays(filepaths=train_filepaths, labels=train_labels, 
+                            need_augmentation=self.need_augmentation),
         steps_per_epoch=steps_per_epoch, epochs=self.epochs, 
-        validation_data=self.generateArrays(filepaths=val_filepaths, labels=val_labels),
+        validation_data=self.generateArrays(filepaths=val_filepaths, labels=val_labels,
+                                            need_augmentation=False),
         validation_steps=validation_steps, callbacks=[checkpointer, early_stopping, tensor_board]
       )
     else:
