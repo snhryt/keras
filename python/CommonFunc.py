@@ -30,13 +30,13 @@ def isImage(filepath):
 
 def showProcessingTime(processing_time):
   if processing_time < 60 * 2:
-    print('processing time: {}[s]'.format(processing_time))
+    print('processing time: {0:.5f} s'.format(processing_time))
   elif processing_time < 60 * 60:
-    print('processing time: {0:.0f}[m]'.format(processing_time / 60))
+    print('processing time: {} m'.format(int(processing_time / 60)))
   else:
     hours = int(processing_time / (60 * 60))
-    minutes = (processing_time - (60 * 60) * hours) / 60
-    print('processing time: {0}[h] {1:.0f}[m]'.format(hours, minutes))    
+    minutes = int(processing_time - (60 * 60) * hours) / 60
+    print('processing time: {0} h, {1} m'.format(hours, minutes))
 
 def storeFontIndex(txt_filepath):
   index_font_dict = {}
@@ -63,7 +63,7 @@ def loadSingleImage(filepath, channel_num=1):
 def loadImages(dirpath, channel_num=1):
   imgs = []
   if channel_num == 1:
-    for filename in os.path.listdir(dirpath):
+    for filename in os.listdir(dirpath):
       if not isImage(filename):
         continue
       filepath = mergeFilepaths(dirpath, filename)
@@ -72,19 +72,18 @@ def loadImages(dirpath, channel_num=1):
       img = img.reshape(img.shape[0], img.shape[1], 1)
       imgs.append(img)
   else:
-    for filename in os.path.listdir(dirpath):
+    for filename in os.listdir(dirpath):
       if not isImage(filename):
         continue
       filepath = mergeFilepaths(dirpath, filename)
       img = cv2.imread(filepath)
       imgs.append(img)
-  imgs = np.array(imgs)
-  return imgs
+  return np.array(imgs)
 
 def loadImagesAndFilenames(dirpath, channel_num=1):
   imgs, filenames = [], []
   if channel_num == 1:
-    for filename in os.path.listdir(dirpath):
+    for filename in os.listdir(dirpath):
       if not isImage(filename):
         continue
       filepath = mergeFilepaths(dirpath, filename)
@@ -94,13 +93,12 @@ def loadImagesAndFilenames(dirpath, channel_num=1):
       imgs.append(img)
       filenames.append(filename)
   else:
-    for filename in os.path.listdir(dirpath):
+    for filename in os.listdir(dirpath):
       if not isImage(filename):
         continue
       filepath = mergeFilepaths(dirpath, filename)
       img = cv2.imread(filepath)
       imgs.append(img)
-      filenames.append(filename)      
-  imgs = np.array(imgs)
-  return imgs, filenames
+      filenames.append(filename)
+  return np.array(imgs), filenames
 
