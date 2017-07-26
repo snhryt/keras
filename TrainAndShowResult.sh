@@ -1,29 +1,47 @@
 #!/bin/bash
 set -e
 
-PARENT_DIRPATH="/media/snhryt/Data/Research_Master/"
-TARGET_DIRPATH="${PARENT_DIRPATH}keras/MyWork/capA_Augmentation/"
-CLASS_NUM=100
-BATCH_SIZE=256
-EPOCHS=50
+PARENT_DIRPATH="/media/snhryt/Data/Research_Master"
 
-if [ ! -f "${TARGET_DIRPATH}model.hdf5" ]; then
-  python python/TrainCaffenet.py \
+# --Character classification--------------------------------
+TARGET_DIRPATH="${PARENT_DIRPATH}/keras/MyWork/CharacterClassification/Syn-Real_Augmentation_Lenet"
+CLASS_NUM=26
+BATCH_SIZE=64
+EPOCHS=50
+if [ ! -f "${TARGET_DIRPATH}/model.hdf5" ]; then
+  python python/train.py \
          ${TARGET_DIRPATH} \
          ${CLASS_NUM} \
          --batch_size=${BATCH_SIZE} \
          --epochs=${EPOCHS} \
-         -g
+         -g \
+         -a
 fi
 
-FONT_LIST_FILEPATH="${PARENT_DIRPATH}Syn_AlphabetImages/selected/${CLASS_NUM}fonts/"
-FONT_LIST_FILEPATH="${FONT_LIST_FILEPATH}SelectedFonts_${CLASS_NUM}class.txt"
-ALPHABET="capA"
+TEST_IMG_DIRPATH="${PARENT_DIRPATH}/Real_Images/Characters_Resized_Selected/Arts_Photography"
+python python/DrawRecogResult.py \
+       ${TEST_IMG_DIRPATH} \
+       ${TARGET_DIRPATH}
+# ---------------------------------------------------------
 
-python python/ShowResult.py \
-       ${TARGET_DIRPATH} \
-       ${FONT_LIST_FILEPATH} \
-       ${CLASS_NUM} \
-       --alphabet=${ALPHABET}
+# --Font shape classification------------------------------
+# TARGET_DIRPATH="${PARENT_DIRPATH}/keras/MyWork/FontShapeClassification/Syn-Real_NoAugmentation_Caffenet"
+# CLASS_NUM=100
+# BATCH_SIZE=256
+# EPOCHS=50
+# if [ ! -f "${TARGET_DIRPATH}/model.hdf5" ]; then
+#   python python/train.py \
+#          ${TARGET_DIRPATH} \
+#          ${CLASS_NUM} \
+#          --batch_size=${BATCH_SIZE} \
+#          --epochs=${EPOCHS} \
+#          -g
+# fi
 
-# python python/DrawRecogResult.py /media/snhryt/Data/Research_Master/Real_Images/Characters_Resized_Selected/capA/ /media/snhryt/Data/Research_Master/keras/MyWork/capA_NoAugumentation/ -g
+# TEST_IMG_DIRPATH="${PARENT_DIRPATH}/Real_Images/Characters_Resized_Selected/Arts & Photography"
+# python python/DrawRecogResult.py \
+#        ${TEST_IMG_DIRPATH} \
+#        ${TARGET_DIRPATH}
+# ---------------------------------------------------------
+
+
