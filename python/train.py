@@ -134,7 +134,8 @@ class Training:
         for i, index in enumerate(random_filepath_indices):
           img = loadSingleImage(filepaths[index], channel_num=self.channel_num)
           img = img.reshape(img.shape[0], img.shape[1])
-          imgs = augmentImage(img, augmentation_num=augmentation_num, rotation=False)
+          imgs = augmentImage(img, augmentation_num=augmentation_num, scale_down=True, 
+                              rotation=False, stretch=True, jaggy=True)
           for j, img in enumerate(imgs):
             f_img = img.reshape(self.height, self.width, self.channel_num)
             f_img = f_img.astype('float32') / 255.
@@ -207,7 +208,7 @@ class Training:
     ax1.set_title(title)
     ax1.set_xlabel('epoch')
     ax1.set_ylabel('loss')
-    ax1.set_xlim(0, len(history['acc']))
+    ax1.set_xlim(0, len(history['acc']) - 1)
     ax1.set_ylim(0.0, 1.2)
     ax1.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), shadow=True, ncol=2)
     fig1.savefig(img_filepath1)
@@ -225,7 +226,7 @@ class Training:
     ax2.set_title(title)
     ax2.set_xlabel('epoch')
     ax2.set_ylabel('loss')
-    ax2.set_xlim(0, len(history['acc']))    
+    ax2.set_xlim(0, len(history['acc']) - 1)    
     ax2.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), shadow=True, ncol=2)
     fig2.savefig(img_filepath2)
     plt.close()
