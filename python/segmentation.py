@@ -213,7 +213,7 @@ class Segmentation:
         # [    |h| |o| |g|    |e|   ]
         cutting_x = []
         index = 0
-        if white_col_x[index] != 0:
+        if white_col_x[index] != 0: # In case like [h| |o| |g|    |e|   ]
           cutting_x.append(0)
         cutting_x.append(white_col_x[index])
         index += 1
@@ -225,7 +225,7 @@ class Segmentation:
             cutting_x.append(white_col_x[index])
             index += 1
         cutting_x.append(white_col_x[index])
-        if white_col_x[-1] != width - 1:
+        if white_col_x[-1] != width - 1: # In case like [    |h| |o| |g|    |e] 
           cutting_x.append(width - 1)
         
         for j in range(len(cutting_x) - 1):
@@ -240,4 +240,4 @@ class Segmentation:
   def detectAndSegmentChars(self):
     self.segmentTextRegions()
     self.drawTextRegions()
-    self.segmentChars(labeling=False)
+    self.segmentChars(labeling=True)
