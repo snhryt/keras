@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 import os
 import time
+import CommonFunc
 from argparse import ArgumentParser
 from keras.models import load_model
-from CommonFunc import (mergeFilepaths, isImage, showProcessingTime, loadSingleImage, 
-                        loadImagesAndFilenames)
 import numpy as np
 import matplotlib.pyplot as plt
 
