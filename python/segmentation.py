@@ -77,8 +77,8 @@ def isNoisy(bin_img, value_change_thresh=30):
   return False
 
 class Segmentation:
-  def __init__(self, filepath, resized_width=100, resized_height=100):
-    self.img = cv2.imread(filepath)
+  def __init__(self, img, resized_width=100, resized_height=100):
+    self.img = img
     self.height, self.width = self.img.shape[:2]
     self.resized_width = resized_width
     self.resized_height = resized_height
