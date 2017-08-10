@@ -5,6 +5,10 @@ import cv2
 import numpy as np
 
 class Margin:
+  '''
+  Number of white pixels from (top, bottom, left, right) of the bounding box of character 
+  to (top, bottom, left, right) of image.
+  '''
   def __init__(self, bin_img):
     height, width = bin_img.shape[:2]
     reshaped = bin_img.reshape(height * width)
@@ -18,6 +22,10 @@ class Margin:
 
 
 def embedImage(fimg, x_tl=0, y_tl=0, angle=0.0):
+  '''
+  Return a large white image into which is embedded a image.
+  Width and height of output image are twice as large as input image's ones.
+  '''
   fimg_height, fimg_width = fimg.shape[:2]
   bimg_height, bimg_width = fimg_height * 2, fimg_width * 2
   bimg = np.empty((bimg_height, bimg_width), dtype=np.uint8)
@@ -26,8 +34,10 @@ def embedImage(fimg, x_tl=0, y_tl=0, angle=0.0):
   y_start = ((bimg_width - fimg_width) / 2) + y_tl
   x_start = ((bimg_height - fimg_height) / 2) + x_tl
   if y_start >= fimg_height or x_start >= fimg_width:
-    raise ValueError('x_tl and y_tl must be in ({0}, {1})'.format(-((bimg_width - fimg_width) / 2), 
-                                                                  (bimg_width - fimg_width) / 2))
+    raise ValueError(
+      'x_tl and y_tl must be in ({0}, {1})'.format(-((bimg_width - fimg_width) / 2), 
+                                                   (bimg_width - fimg_width) / 2)
+    )
   bimg[y_start:y_start + fimg_height, x_start:x_start + fimg_width] = fimg[0:fimg_height,  
                                                                            0:fimg_width]
 
@@ -37,7 +47,10 @@ def embedImage(fimg, x_tl=0, y_tl=0, angle=0.0):
   return bimg
 
 
-def getRoi(img):
+def storeROI(img):
+  '''
+  Return coordinates of ROI(Rectangle Of Image).
+  '''
   # bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
   height, width = img.shape[:2]
   reshaped_img = img.reshape(height * width)
@@ -52,7 +65,10 @@ def getRoi(img):
   return [left, top, right - left + 1, bottom - top + 1]
 
 
-def getSquareImage(roi_img):
+def makeSquareImage(roi_img):
+  '''
+  Return a square image. For making square image, pad white pixels to a ROI image.
+  '''
   height, width = roi_img.shape[:2]
   if height == width:
     return roi_img
@@ -67,7 +83,7 @@ def getSquareImage(roi_img):
         square_img[0:height, half_length + 1:(half_length + 1) + width] = roi_img[0:height, 0:width]
     else:
       square_img = np.empty((width, width), dtype=np.uint8)
-      square_img[:,:] = 255      
+      square_img[:,:] = 255
       half_length = (width - height) / 2
       if half_length % 2 == 0:
         square_img[half_length:half_length + height, 0:width] = roi_img[0:height, 0:width]
@@ -77,19 +93,22 @@ def getSquareImage(roi_img):
   
 
 def storeScaleDownImages(imgs):
+  '''
+  Return scale-down images.
+  '''
   output_imgs = []
   for i,img in enumerate(imgs):
     large_img = embedImage(img)
     margin = Margin(img)
-    roi = getRoi(large_img)
-    roi_copy = list(roi) # 参照渡しの浅いコピーにならないように深いコピー
+    roi = storeROI(large_img)
+    roi_copy = list(roi) # deep copy
     for delta in [6, 12, 18, 24, 30]:
       roi[0] -= (margin.left + delta)
       roi[1] -= (margin.top + delta)
       roi[2] += margin.left + margin.right + delta * 2
       roi[3] += margin.top + margin.bottom + delta * 2
       roi_img = large_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
-      square_img = getSquareImage(roi_img)
+      square_img = makeSquareImage(roi_img)
       resized_img = cv2.resize(square_img, img.shape[:2])
       bin_resized_img = cv2.threshold(resized_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
       output_imgs.append(bin_resized_img)
@@ -98,6 +117,9 @@ def storeScaleDownImages(imgs):
   return output_imgs
 
 def storeRotatedImages(imgs):
+  '''
+  Return rotated images. Rotation angles are -8, -4, +4, +8 [deg].
+  '''
   output_imgs = []
   for i, img in enumerate(imgs):
     margin = Margin(img)
@@ -105,13 +127,13 @@ def storeRotatedImages(imgs):
       large_rotated_img = embedImage(img, x_tl=0, y_tl=0, angle=angle)
       bin_large_rotated_img = cv2.threshold(large_rotated_img, 0, 255, 
                                             cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-      roi = getRoi(bin_large_rotated_img)
+      roi = storeROI(bin_large_rotated_img)
       roi[0] -= margin.left
       roi[1] -= margin.top
       roi[2] += margin.left + margin.right
       roi[3] += margin.top + margin.bottom
       roi_img = bin_large_rotated_img[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]]
-      square_img = getSquareImage(roi_img)
+      square_img = makeSquareImage(roi_img)
       resized_img = cv2.resize(square_img, img.shape[:2])
       bin_resized_img = cv2.threshold(resized_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
       output_imgs.append(bin_resized_img)
@@ -120,6 +142,9 @@ def storeRotatedImages(imgs):
 
 
 def storeStretchedImages(imgs):
+  '''
+  Return vertically and horizontally stretched images.
+  '''
   output_imgs = []
   for i, img in enumerate(imgs):
     large_img = embedImage(img)
@@ -153,6 +178,9 @@ def storeStretchedImages(imgs):
 
 
 def storeJaggyImages(imgs):
+  '''
+  Return jaggy images. For making jaggy image, perform scaling down and then scaling up to a image.
+  '''
   output_imgs = []
   for i, img in enumerate(imgs):
     small_img = cv2.resize(img, (30, 30))
@@ -162,6 +190,9 @@ def storeJaggyImages(imgs):
   return output_imgs
 
 def storeNoisyImages(imgs, img_num=100):
+  '''
+  Return noisy images.
+  '''
   indices = [i for i in range(1, len(imgs))]
   random_indices = random.sample(indices, img_num)
   height, width = imgs[0].shape[:2]
@@ -182,6 +213,10 @@ def storeNoisyImages(imgs, img_num=100):
 
 def augmentImage(img, augmentation_num=None, scale_down=True, rotation=True, stretch=True, 
                  jaggy=True, noise=False):
+  '''
+  Return augmented images.
+  The types of augmentation are scaling down, rotation, stretch, jaggy, noise, and translation.
+  '''
   augmented_imgs = np.empty((0, img.shape[0], img.shape[1]))
   # input image
   augmented_imgs = np.append(augmented_imgs, img[np.newaxis,:,:], axis=0)
@@ -216,25 +251,3 @@ def augmentImage(img, augmentation_num=None, scale_down=True, rotation=True, str
         selected_augmented_imgs[i] = augmented_imgs[index]
       return selected_augmented_imgs
   return augmented_imgs
-
-def showImage(img):
-  cv2.imshow('', img)
-  cv2.waitKey(0)
-  cv2.destroyAllWindows()
-
-def main():
-  img_filepath = ('/media/snhryt/Data/Research_Master/Syn_AlphabetImages/font/' + 
-                  'Essays-1743/capO_Essays-1743.png')
-  img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
-  bin_img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-  augmented_imgs = augmentImage(bin_img)
-  print('augmented_imgs.shape = {}'.format(augmented_imgs.shape))
-  
-  output_dirpath = '/home/snhryt/Desktop/augmentation/'
-  for i, img in enumerate(augmented_imgs):
-    output_filepath = output_dirpath + '{0:03d}'.format(i) + '.png'
-    cv2.imwrite(output_filepath, img)
-
-
-if __name__ == "__main__":
-  main()
