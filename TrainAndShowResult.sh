@@ -3,10 +3,9 @@ set -e
 
 PARENT_DIRPATH="/media/snhryt/Data/Research_Master"
 
-# --Character classification--------------------------------
-TARGET_DIRPATH="${PARENT_DIRPATH}/keras/MyWork/CharacterClassification/Syn-Real_Augmentation_Lenet"
+TARGET_DIRPATH="${PARENT_DIRPATH}/keras/MyWork/CharacterClassification/Syn-Real_NoAugmentation_Caffenet"
 CLASS_NUM=26
-BATCH_SIZE=64
+BATCH_SIZE=256
 EPOCHS=50
 if [ ! -f "${TARGET_DIRPATH}/model.hdf5" ]; then
   python python/train.py \
@@ -14,34 +13,15 @@ if [ ! -f "${TARGET_DIRPATH}/model.hdf5" ]; then
          ${CLASS_NUM} \
          --batch_size=${BATCH_SIZE} \
          --epochs=${EPOCHS} \
-         -g \
-         -a
+         --network="caffenet" \
+         -g
 fi
 
-TEST_IMG_DIRPATH="${PARENT_DIRPATH}/Real_Images/Characters_Resized_Selected/Arts_Photography"
+TEST_PATH="${PARENT_DIRPATH}/keras/MyWork/CharacterClassification/TestImages.txt"
 python python/DrawRecogResult.py \
-       ${TEST_IMG_DIRPATH} \
-       ${TARGET_DIRPATH}
-# ---------------------------------------------------------
+       ${TEST_PATH} \
+       ${TARGET_DIRPATH} \
+       --classification_target="character"
 
-# --Font shape classification------------------------------
-# TARGET_DIRPATH="${PARENT_DIRPATH}/keras/MyWork/FontShapeClassification/Syn-Real_NoAugmentation_Caffenet"
-# CLASS_NUM=100
-# BATCH_SIZE=256
-# EPOCHS=50
-# if [ ! -f "${TARGET_DIRPATH}/model.hdf5" ]; then
-#   python python/train.py \
-#          ${TARGET_DIRPATH} \
-#          ${CLASS_NUM} \
-#          --batch_size=${BATCH_SIZE} \
-#          --epochs=${EPOCHS} \
-#          -g
-# fi
-
-# TEST_IMG_DIRPATH="${PARENT_DIRPATH}/Real_Images/Characters_Resized_Selected/Arts & Photography"
-# python python/DrawRecogResult.py \
-#        ${TEST_IMG_DIRPATH} \
-#        ${TARGET_DIRPATH}
-# ---------------------------------------------------------
 
 
