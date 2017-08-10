@@ -6,7 +6,7 @@ import numpy as np
 
 def countLineNum(txt_filepath):
   '''
-  Count number of lines of a text file.
+  Return number of lines of a text file.
   '''
   line_num = 0
   with open(txt_filepath) as f:
@@ -18,21 +18,21 @@ def countLineNum(txt_filepath):
 
 def isImage(filepath):
   '''
-  If the extension of file is ".png" or ".jpg" or ".bmp", return True.
+  Return True if the extension of file is ".png" or ".jp(e)g" or ".bmp", otherwise return False.
   '''
-  img_exts = ['.png', '.jpg', '.jpeg', '.bmp']
+  img_exts = {'.png', '.jpg', '.jpeg', '.bmp'}
   ext = os.path.splitext(filepath)[1]
-  for i in range(len(img_exts)):
-    if ext == img_exts[i]:
-      return True
-  return False
+  if ext in img_exts:
+    return True
+  else:
+    return False
 
 def showProcessingTime(processing_time):
   '''
   Show processing time.
   '''
   if processing_time < 60 * 2:
-    print('processing time: {0:.5f} s'.format(processing_time))
+    print('processing time: {:.5f} s'.format(processing_time))
   elif processing_time < 60 * 60:
     print('processing time: {} m'.format(int(processing_time / 60)))
   else:
@@ -42,8 +42,8 @@ def showProcessingTime(processing_time):
 
 def storeIndexFontDict(txt_filepath):
   '''
-  Return a dictionary (key:font index, value:font name) got from a text file.
-  Each line of a text file must be "<font index> <font name>" style.
+  Return a dictionary (key:font index, value:font name) stored from a text file.
+  Each line of the text file must be "<font index> <font name>" style.
   '''
   index_font_dict = {}
   with open(txt_filepath) as f:
@@ -56,58 +56,62 @@ def storeIndexFontDict(txt_filepath):
       line = f.readline()
   return index_font_dict
 
-def storeSingleImage(filepath, color='gray'):
+def storeSingleImageShaped4Keras(filepath, color='gray'):
   '''
-  Store a image from filepath.
-  The image is read as color or grayscale or binarized (default: grayscale).
+  Return a numpy array of a image stored from filepath.
+  You can select the number of color channels of image from 1("gray" or "bin") or 3("color") 
+  (default: "gray").
+  When color="gray", the output array is reshaped as (height, width, 1) for model fitting 
+  on Keras having TensorFlow backend.
   '''
+  if not color in {'color', 'gray', 'bin'}:
+    raise NameError('color must be "color", "gray", or "bin"')
+
   if color == 'color':
     img = cv2.imread(filepath)
-  elif color == 'gray':
-    img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
-  elif color == 'bin':
-    gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
-    img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
   else:
-    raise NameError('"color" must be one of them: "color", "gray", "bin"')
+    img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+    if color == 'bin':
+      img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+    img = img[:, :, np.newaxis]
+  img = img.astype('float32') / 255.
   return img
+    
+def storeImagesShaped4Keras(path, color='gray', need_filename=False):
+  '''
+  Return a numpy array of images stored from a directory or a list of image filepaths.
+  You can select the number of color channels of images from 1("gray" or "bin") or 3("color")
+  (default: "gray").
+  When color="gray", the output array is reshaped as (image_num, height, width, 1) for model fitting 
+  on Keras having TensorFlow backend.
+  And when need_filename=True, this function also returns a list of filenames of the images.
+  '''
+  if not color in {'color', 'gray', 'bin'}:
+    raise NameError('color must be "color", "gray", or "bin"')
 
-def storeImagesFromDirectory(dirpath, color='gray', need_filenames=False):
-  '''
-  Return a list of images stored from directory.
-  The images are read as color or grayscale or binarized (default: grayscale).
-  This function also returns a list of filenames of the images, if you need.
-  '''
-  imgs = filenames = []
-  if color == 'color':
-    for filename in os.listdir(dirpath):
+  imgs = []
+  filenames = []
+  if os.path.isdir(path):
+    for filename in os.listdir(path):
       if not isImage(filename):
         continue
-      filepath = os.path.join(dirpath, filename)
-      img = cv2.imread(filepath)
+      filepath = os.path.join(path, filename)
+      img = storeSingleImageShaped4Keras(filepath, color=color)
       imgs.append(img)
       filenames.append(filename)
-  elif color == 'gray':
-    for filename in os.listdir(dirpath):
-      if not isImage(filename):
-        continue
-      filepath = os.path.join(dirpath, filename)
-      gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
-      imgs.append(gray_img)
-      filenames.append(filename)
-  elif color == 'bin':
-    for filename in os.listdir(dirpath):
-      if not isImage(filename):
-        continue
-      filepath = os.path.join(dirpath, filename)
-      gray_img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
-      bin_img = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
-      imgs.append(bin_img)
-      filenames.append(filename)
+  elif os.path.splitext(path)[1]:
+    with open(path) as f:
+      line = f.readline()
+      while line:
+        filepath = line.split('\n')[0]
+        img = storeSingleImageShaped4Keras(filepath, color=color)
+        imgs.append(img)
+        filenames.append(os.path.basename(filepath))
+        line = f.readline()
   else:
-    raise NameError('"color" must be one of them: "color", "gray", "bin"')
+    raise NameError('The extension of path must be "" or ".txt"')
 
-  if need_filenames:
+  if need_filename:
     return np.array(imgs), filenames
   else:
     return np.array(imgs)
